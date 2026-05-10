@@ -1,0 +1,1 @@
+export const expiration_time = 60*60*24;
