@@ -10,7 +10,8 @@ import {
 import {
     buildSessionCookie
 } from "../lib/cookie.js";
-import { expiration_time } from "../config/session_config.js";
+
+import { generateSessionId } from "../utils/generateSid.js";
 
 function parseCookies(req) {
     const header = req.headers.cookie || "";
@@ -25,6 +26,8 @@ export async function sessionMiddleware(req, res, next) {
 
     let sid = cookies.sid;
     console.log("sid before:", sid);
+    console.log(req.protocol);
+    console.log(req.secure);
 
     if (!sid) {
         sid = generateSessionId();

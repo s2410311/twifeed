@@ -1,2 +1,2 @@
-export const host = "127.0.0.1";
+export const host = "redis";
 export const port = 6379;

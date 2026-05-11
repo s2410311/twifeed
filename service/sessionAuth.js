@@ -11,7 +11,7 @@ import {
 
 export async function
 regenerateAuthenticatedSession(req,res,uid) {
-    await destroySession(req.sessionID);
+    await destroySession(req.session.sid);
 
     const newSID =generateSessionId();
 

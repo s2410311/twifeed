@@ -14,8 +14,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static("public"));
 
-
-
+app.set("trust proxy", 1);
 
 app.use(sessionMiddleware);
 
@@ -25,5 +24,5 @@ app.use("/logout", logoutRouter);
 
 
 app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+    console.log("Server running");
 });
