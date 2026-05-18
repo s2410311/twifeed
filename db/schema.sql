@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS passkeys(
     last_used_at INTEGER
 );
 
-CREATE TABLE follows (
+CREATE TABLE IF NOT EXISTS follows (
     follower_uid TEXT NOT NULL,
     followee_uid TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
