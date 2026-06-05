@@ -1,11 +1,12 @@
 import express from "express";
 import db from "../db/index.js";
 import requireAuth from "../middleware/requireAuth.js";
+import { buildTimeline } from "../service/timeline.js";
 
 const router = express.Router();
 
 // フォロー
-router.post("/:uid", requireAuth, (req, res) => {
+router.post("/:uid", requireAuth, async (req, res) => {
     const follower_uid = req.session.uid;
     const followee_uid = req.params.uid;
 
@@ -24,6 +25,8 @@ router.post("/:uid", requireAuth, (req, res) => {
     db.prepare(
         "INSERT INTO follows (follower_uid, followee_uid, created_at) VALUES (?, ?, ?)"
     ).run(follower_uid, followee_uid, Date.now());
+
+    await buildTimeline(follower_uid);
 
     res.status(201).json({ ok: true });
 });

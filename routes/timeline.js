@@ -1,7 +1,7 @@
 import express from "express";
 import db from "../db/index.js";
 import requireAuth from "../middleware/requireAuth.js";
-import { getTimeline } from "../lib/timeline.js";
+import { getTimeline } from "../lib/timelineStore.js";
 
 const router = express.Router();
 
