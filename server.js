@@ -8,6 +8,10 @@ import requireAuth from "./middleware/requireAuth.js";
 import authRouter from "./routes/auth.js";
 import registerRouter from "./routes/register.js";
 import logoutRouter from "./routes/logout.js";
+import articlesRouter from "./routes/articles.js";
+import followsRouter from "./routes/follows.js";
+import timelineRouter from "./routes/timeline.js";
+import imagesRouter from "./routes/images.js";
 
 const app = express();
 
@@ -21,6 +25,10 @@ app.use(sessionMiddleware);
 app.use("/auth", authRouter);
 app.use("/register", registerRouter);
 app.use("/logout", logoutRouter);
+app.use("/articles", articlesRouter);
+app.use("/follows", followsRouter);
+app.use("/timeline", timelineRouter);
+app.use("/images", imagesRouter);
 
 
 app.listen(3000, () => {

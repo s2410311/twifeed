@@ -17,9 +17,6 @@ import {
     getChallenge,
     consumeChallenge
 } from "../lib/challenge.js";
-import {
-    storeSession
-} from "../lib/sessionStore.js"
 
 import { regenerateAuthenticatedSession } from "../service/sessionAuth.js";
 
@@ -33,19 +30,24 @@ const router = express.Router();
 
 router.post("/options", async (req, res) => {
     try {
-        const { uid } = req.body;
-        console.log(req.body);
+        const { uid, name, email } = req.body;
 
-        if (!uid || typeof uid !== "string") {
-            return res.status(400).json({
-                error: "invalid uid"
-            });
+        if (!uid || typeof uid !== "string" || uid.trim() === "") {
+            return res.status(400).json({ error: "invalid uid" });
+        }
+        if (!name || typeof name !== "string" || name.trim() === "") {
+            return res.status(400).json({ error: "invalid name" });
+        }
+        if (!email || typeof email !== "string" || email.trim() === "") {
+            return res.status(400).json({ error: "invalid email" });
         }
 
-        db.prepare(`
-            INSERT OR IGNORE INTO users (uid, email, created_at)
-            VALUES (?, ?, ?)
-        `).run(uid, "test@example.com", Date.now());
+        if (db.prepare("SELECT uid FROM users WHERE uid = ?").get(uid.trim())) {
+            return res.status(409).json({ error: "uid already taken" });
+        }
+        if (db.prepare("SELECT uid FROM users WHERE email = ?").get(email.trim())) {
+            return res.status(409).json({ error: "email already taken" });
+        }
 
         const userIdBuffer = new TextEncoder().encode(uid);
 
@@ -66,13 +68,14 @@ router.post("/options", async (req, res) => {
 
         await storeChallenge(options.challenge, {
             sessionID: req.session.sid,
-            uid,
+            uid: uid.trim(),
+            name: name.trim(),
+            email: email.trim(),
             type: "registration",
             challenge: options.challenge
         });
 
         res.json(options);
-        console.log("challenge発行:", options.challenge);
 
     } catch (e) {
         console.error(e);
@@ -81,7 +84,7 @@ router.post("/options", async (req, res) => {
 });
 
 router.post("/verify", async (req, res) => {
-    let challenge //challenge = clientData.challenge;
+    let challenge;
 
     try {
         const body = req.body;
@@ -99,6 +102,10 @@ router.post("/verify", async (req, res) => {
             return res.json({ verified: false });
         }
 
+        if (record.sessionID !== req.session.sid) {
+            return res.json({ verified: false });
+        }
+
         const verification = await verifyRegistrationResponse({
             response: body,
             expectedChallenge: record.challenge,
@@ -110,17 +117,18 @@ router.post("/verify", async (req, res) => {
             return res.json({ verified: false });
         }
 
-        if (record.sessionID !== req.session.sid) {
-            return res.json({ verified: false });
-        }
-
         const cred = verification.registrationInfo.credential;
 
         db.prepare(`
-                INSERT INTO passkeys
-                (uid, credential_id, public_key, sign_count, transports, backup_eligible, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `).run(
+            INSERT INTO users (uid, name, email, created_at)
+            VALUES (?, ?, ?, ?)
+        `).run(record.uid, record.name, record.email, Date.now());
+
+        db.prepare(`
+            INSERT INTO passkeys
+            (uid, credential_id, public_key, sign_count, transports, backup_eligible, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
             record.uid,
             base64urlToBuffer(cred.id),
             Buffer.from(cred.publicKey),
@@ -130,15 +138,8 @@ router.post("/verify", async (req, res) => {
             Date.now()
         );
 
-        await regenerateAuthenticatedSession(
-            req,
-            res,
-            record.uid
-        );
+        await regenerateAuthenticatedSession(req, res, record.uid);
 
-        console.log("受信challenge:", clientData?.challenge);
-        console.log("DB record:", record);
-        console.log("verification:", verification);
         res.json({ verified: true });
 
     } catch (e) {
@@ -149,7 +150,6 @@ router.post("/verify", async (req, res) => {
             await consumeChallenge(challenge);
         }
     }
-
 });
 
 export default router;
