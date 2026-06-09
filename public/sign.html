@@ -2,26 +2,22 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>Passkey Test</title>
+  <title>ログイン / 登録</title>
 </head>
 <body>
 
-  <h1>Passkey Test</h1>
+  <h1>twifeed</h1>
 
-  <input id="uid" type="text">
+  <p>
+    <label>ユーザーID: <input id="uid" type="text" placeholder="例: alice"></label>
+  </p>
 
-  <button id="registerBtn">
-    登録
-  </button>
-
-  <button id="loginBtn">
-    ログイン
-  </button>
+  <button id="registerBtn">新規登録（Passkey）</button>
+  <button id="loginBtn">ログイン（Passkey）</button>
 
   <pre id="log"></pre>
 
-  <script type="module" src="/js/sign.js">
-  </script>
+  <script type="module" src="/js/sign.js"></script>
 
 </body>
 </html>

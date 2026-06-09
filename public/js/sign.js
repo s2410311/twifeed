@@ -274,10 +274,12 @@ async function login() {
         const result =
             await verifyRes.json();
 
-        log(
-            "ログイン結果: " +
-            JSON.stringify(result)
-        );
+        if (result.verified) {
+            window.location.href = "/home.html";
+            return;
+        }
+
+        log("ログイン失敗: 認証できませんでした");
 
     } catch (e) {
 

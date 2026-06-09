@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ホーム - twifeed</title>
+</head>
+<body>
+
+  <h1>twifeed</h1>
+
+  <button id="logoutBtn">ログアウト</button>
+
+  <hr>
+
+  <h2>投稿</h2>
+  <textarea id="postContent" rows="3" cols="50" placeholder="いまなにしてる？"></textarea>
+  <br>
+  <button id="postBtn">投稿</button>
+  <p id="postStatus"></p>
+
+  <hr>
+
+  <h2>タイムライン</h2>
+  <button id="reloadBtn">更新</button>
+  <div id="timeline"></div>
+  <button id="moreBtn" style="display:none">もっと見る</button>
+
+  <script type="module" src="/js/home.js"></script>
+
+</body>
+</html>
