@@ -3,9 +3,18 @@ import { renderCard } from "../renderUtils.js";
 
 export function renderHome() {
     document.getElementById("app").innerHTML = `
-        <h1>twifeed</h1>
-        <a href="/profile" data-link>プロフィール設定</a>
-        <button id="logoutBtn">ログアウト</button>
+        <div style="display:flex;align-items:center;gap:8px">
+            <h1 style="margin:0;flex:1">twifeed</h1>
+            <button id="searchToggleBtn" title="検索" style="font-size:1.2em;background:none;border:none;cursor:pointer;padding:4px">🔍</button>
+            <a href="/profile" data-link>プロフィール</a>
+            <button id="logoutBtn">ログアウト</button>
+        </div>
+        <div id="searchBar" style="display:none;margin-top:8px">
+            <div style="display:flex;gap:6px">
+                <input id="searchInput" type="text" placeholder="キーワードを入力…" style="flex:1;padding:6px;font-size:1em">
+                <button id="searchSubmitBtn">検索</button>
+            </div>
+        </div>
         <hr>
         <h2>投稿</h2>
         <textarea id="postContent" rows="3" cols="50" placeholder="いまなにしてる？"></textarea>
@@ -100,6 +109,23 @@ export function renderHome() {
             status.style.color = "red";
         }
     }
+
+    const searchBar = document.getElementById("searchBar");
+    document.getElementById("searchToggleBtn").addEventListener("click", () => {
+        const visible = searchBar.style.display !== "none";
+        searchBar.style.display = visible ? "none" : "block";
+        if (!visible) document.getElementById("searchInput").focus();
+    });
+
+    function goSearch() {
+        const q = document.getElementById("searchInput").value.trim();
+        if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+    }
+    document.getElementById("searchSubmitBtn").addEventListener("click", goSearch);
+    document.getElementById("searchInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") goSearch();
+        if (e.key === "Escape") { searchBar.style.display = "none"; }
+    });
 
     document.getElementById("postBtn").addEventListener("click", post);
     document.getElementById("reloadBtn").addEventListener("click", () => loadTimeline(0, false));
