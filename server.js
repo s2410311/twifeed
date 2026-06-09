@@ -39,7 +39,7 @@ app.use("/tags", tagsRouter);
 
 
 // SPAフォールバック：APIと静的ファイル以外は index.html を返す
-app.get("*", (_req, res) => {
+app.get("/{*path}", (_req, res) => {
     res.sendFile("index.html", { root: "./public" });
 });
 
