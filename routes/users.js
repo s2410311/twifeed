@@ -3,6 +3,7 @@ import db from "../db/index.js";
 import requireAuth from "../middleware/requireAuth.js";
 import redis from "../lib/redisClient.js";
 import { regenerateAuthenticatedSession } from "../service/sessionAuth.js";
+import { expToLevel, levelToExp } from "../utils/level.js";
 
 const router = express.Router();
 
@@ -15,9 +16,19 @@ router.get("/me", requireAuth, async (req, res) => {
     if (!user) return res.status(404).json({ error: "user not found" });
 
     const delta = parseInt(await redis.get(`exp:${uid}`)) || 0;
-    user.exp = Math.max(user.exp + delta, 0);
+    const totalExp = Math.max(user.exp + delta, 0);
 
-    res.json(user);
+    const level = expToLevel(totalExp);
+    const expForNext = levelToExp(level + 1);
+
+    res.json({
+        uid: user.uid,
+        name: user.name,
+        email: user.email,
+        level,
+        exp: totalExp,
+        exp_to_next: expForNext - totalExp,
+    });
 });
 
 const changeUid = db.transaction((oldUid, newUid) => {

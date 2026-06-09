@@ -10,7 +10,8 @@ async function loadProfile() {
     uidInput.value   = user.uid   ?? "";
     nameInput.value  = user.name  ?? "";
     emailInput.value = user.email ?? "";
-    document.getElementById("exp").textContent = user.exp ?? 0;
+    document.getElementById("level").textContent = `Lv.${user.level}`;
+    document.getElementById("exp_to_next").textContent = `次のレベルまで ${user.exp_to_next} exp`;
 }
 
 async function save() {
