@@ -12,6 +12,43 @@ async function loadProfile() {
     emailInput.value = user.email ?? "";
     document.getElementById("level").textContent = `Lv.${user.level}`;
     document.getElementById("exp_to_next").textContent = `次のレベルまで ${user.exp_to_next} exp`;
+    await loadFollowing(user.uid);
+}
+
+async function loadFollowing(uid) {
+    const res = await fetch(`/follows/${encodeURIComponent(uid)}/following`);
+    const list = await res.json();
+    const container = document.getElementById("followingList");
+    container.innerHTML = "";
+
+    if (list.length === 0) {
+        container.textContent = "フォロー中のユーザーはいません";
+        return;
+    }
+
+    for (const u of list) {
+        const div = document.createElement("div");
+        div.style.padding = "6px 0";
+        div.style.borderBottom = "1px solid #eee";
+        div.style.display = "flex";
+        div.style.alignItems = "center";
+        div.style.gap = "8px";
+
+        const link = document.createElement("a");
+        link.href = `/user.html?uid=${encodeURIComponent(u.uid)}`;
+        link.textContent = `${u.name} @${u.uid}`;
+
+        const unfollowBtn = document.createElement("button");
+        unfollowBtn.textContent = "フォロー解除";
+        unfollowBtn.addEventListener("click", async () => {
+            const r = await fetch(`/follows/${encodeURIComponent(u.uid)}`, { method: "DELETE" });
+            if (r.ok) div.remove();
+        });
+
+        div.appendChild(link);
+        div.appendChild(unfollowBtn);
+        container.appendChild(div);
+    }
 }
 
 async function save() {

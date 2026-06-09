@@ -1,26 +1,9 @@
+import { renderCard, toggleLike } from "./renderUtils.js";
+
 let nextOffset = null;
 
-function formatDate(ts) {
-    return new Date(ts).toLocaleString("ja-JP");
-}
-
 function renderArticle(a) {
-    const div = document.createElement("div");
-    div.style.borderBottom = "1px solid #ccc";
-    div.style.padding = "8px 0";
-
-    const liked = !!a.liked;
-    const likeBtn = document.createElement("button");
-    likeBtn.textContent = `${liked ? "♥" : "♡"} ${a.like_count}`;
-    likeBtn.dataset.aid = a.aid;
-    likeBtn.dataset.liked = liked ? "1" : "0";
-    likeBtn.addEventListener("click", () => toggleLike(likeBtn));
-
-    const detailLink = document.createElement("a");
-    detailLink.href = `/article.html?aid=${a.aid}`;
-    detailLink.textContent = "詳細";
-    detailLink.style.fontSize = "0.85em";
-    detailLink.style.marginLeft = "8px";
+    const card = renderCard(a);
 
     const replyCount = document.createElement("span");
     replyCount.textContent = `💬 ${a.reply_count}`;
@@ -28,73 +11,17 @@ function renderArticle(a) {
     replyCount.style.color = "#888";
     replyCount.style.marginLeft = "8px";
 
-    const quote = a.parent_aid ? `
-        <div style="border:1px solid #ccc;border-radius:4px;padding:6px;margin-bottom:6px;color:#555;font-size:0.9em">
-            <strong>${escapeHtml(a.parent_name ?? "")}</strong>
-            <span style="color:#aaa"> @${escapeHtml(a.parent_uid ?? "")}</span>
-            <p style="margin:2px 0;white-space:pre-wrap">${escapeHtml((a.parent_content ?? "").slice(0, 100))}${(a.parent_content ?? "").length > 100 ? "…" : ""}</p>
-        </div>
-    ` : "";
+    const detailLink = document.createElement("a");
+    detailLink.href = `/article.html?aid=${a.aid}`;
+    detailLink.textContent = "詳細";
+    detailLink.style.fontSize = "0.85em";
+    detailLink.style.marginLeft = "8px";
 
-    div.innerHTML = `
-        ${quote}
-        <strong>${escapeHtml(a.name)}</strong>
-        <span style="color:#888;font-size:0.85em"> @${escapeHtml(a.uid)} · ${formatDate(a.created_at)}</span>
-        <p style="margin:4px 0">${escapeHtml(a.content)}</p>
-    `;
-
-    if (a.images && a.images.length > 0) {
-        const imgWrap = document.createElement("div");
-        for (const img of a.images) {
-            const el = document.createElement("img");
-            el.src = img.thumbnail_url;
-            el.alt = "";
-            el.style.maxWidth = "200px";
-            el.style.maxHeight = "200px";
-            el.style.marginRight = "4px";
-            el.style.cursor = "pointer";
-            el.addEventListener("click", () => window.open(img.url, "_blank"));
-            imgWrap.appendChild(el);
-        }
-        div.appendChild(imgWrap);
-    }
-
-    div.appendChild(likeBtn);
-    div.appendChild(replyCount);
-    div.appendChild(detailLink);
-    return div;
+    card.appendChild(replyCount);
+    card.appendChild(detailLink);
+    return card;
 }
 
-async function toggleLike(btn) {
-    const aid = btn.dataset.aid;
-    const liked = btn.dataset.liked === "1";
-
-    const res = await fetch(`/articles/${aid}/likes`, {
-        method: liked ? "DELETE" : "POST"
-    });
-
-    if (res.status === 401) {
-        window.location.href = "/sign.html";
-        return;
-    }
-
-    if (res.ok) {
-        const newLiked = !liked;
-        const count = parseInt(btn.textContent.replace(/\D/g, "")) + (newLiked ? 1 : -1);
-        btn.dataset.liked = newLiked ? "1" : "0";
-        btn.textContent = `${newLiked ? "♥" : "♡"} ${count}`;
-    }
-}
-
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
-
-// 画像選択時にプレビューを表示
 document.getElementById("imageInput").addEventListener("change", (e) => {
     const previews = document.getElementById("imagePreviews");
     previews.innerHTML = "";
@@ -115,34 +42,25 @@ async function uploadImages(files) {
     for (const file of files) form.append("images", file);
     const res = await fetch("/images", { method: "POST", body: form });
     if (!res.ok) throw new Error("画像のアップロードに失敗しました");
-    const data = await res.json();
-    return data.iids;
+    return (await res.json()).iids;
 }
 
 async function loadTimeline(offset = 0, append = false) {
     const res = await fetch(`/timeline?offset=${offset}&limit=20`);
-
-    if (res.status === 401) {
-        window.location.href = "/sign.html";
-        return;
-    }
+    if (res.status === 401) { window.location.href = "/sign.html"; return; }
 
     const data = await res.json();
     const container = document.getElementById("timeline");
-
     if (!append) container.innerHTML = "";
 
     if (data.articles.length === 0 && !append) {
         container.textContent = "投稿がありません";
     }
 
-    for (const a of data.articles) {
-        container.appendChild(renderArticle(a));
-    }
+    for (const a of data.articles) container.appendChild(renderArticle(a));
 
     nextOffset = data.next_offset;
-    document.getElementById("moreBtn").style.display =
-        nextOffset !== null ? "inline" : "none";
+    document.getElementById("moreBtn").style.display = nextOffset !== null ? "inline" : "none";
 }
 
 async function post() {
@@ -151,10 +69,7 @@ async function post() {
     const imageInput = document.getElementById("imageInput");
     const files = Array.from(imageInput.files).slice(0, 4);
 
-    if (!content) {
-        status.textContent = "内容を入力してください";
-        return;
-    }
+    if (!content) { status.textContent = "内容を入力してください"; return; }
 
     let image_ids = [];
     try {
@@ -171,10 +86,7 @@ async function post() {
         body: JSON.stringify({ content, image_ids })
     });
 
-    if (res.status === 401) {
-        window.location.href = "/sign.html";
-        return;
-    }
+    if (res.status === 401) { window.location.href = "/sign.html"; return; }
 
     if (res.status === 201) {
         document.getElementById("postContent").value = "";
@@ -183,11 +95,7 @@ async function post() {
         status.textContent = "投稿しました！";
         status.style.color = "green";
         status.style.fontWeight = "bold";
-        setTimeout(() => {
-            status.textContent = "";
-            status.style.color = "";
-            status.style.fontWeight = "";
-        }, 3000);
+        setTimeout(() => { status.textContent = ""; status.style.color = ""; status.style.fontWeight = ""; }, 3000);
         await loadTimeline(0, false);
     } else {
         const err = await res.json();

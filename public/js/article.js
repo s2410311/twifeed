@@ -1,32 +1,20 @@
+import { escapeHtml, formatDate, linkifyTags, toggleLike } from "./renderUtils.js";
+
 const aid = parseInt(new URLSearchParams(location.search).get("aid"));
 
 if (isNaN(aid)) {
     document.getElementById("thread").textContent = "投稿が見つかりません";
 }
 
-function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
-
-function formatDate(ts) {
-    return new Date(ts).toLocaleString("ja-JP");
-}
-
-// フラットな記事リストからツリーを構築
 function buildTree(articles, rootAid) {
     const map = {};
     for (const a of articles) map[a.aid] = { ...a, children: [] };
-    const root = map[rootAid];
     for (const a of articles) {
         if (a.parent_aid && map[a.parent_aid]) {
             map[a.parent_aid].children.push(map[a.aid]);
         }
     }
-    return root;
+    return map[rootAid];
 }
 
 function renderNode(node, depth = 0) {
@@ -46,14 +34,16 @@ function renderNode(node, depth = 0) {
     const replyBtn = document.createElement("button");
     replyBtn.textContent = "返信";
     replyBtn.style.marginLeft = "8px";
-    replyBtn.addEventListener("click", () => toggleReplyForm(node.aid, replyForm));
 
     const replyForm = buildReplyForm(node.aid);
+    replyBtn.addEventListener("click", () => {
+        replyForm.style.display = replyForm.style.display === "none" ? "block" : "none";
+    });
 
     div.innerHTML = `
         <strong>${escapeHtml(node.name)}</strong>
         <span style="color:#888;font-size:0.85em"> @${escapeHtml(node.uid)} · ${formatDate(node.created_at)}</span>
-        <p style="margin:4px 0">${escapeHtml(node.content)}</p>
+        <p style="margin:4px 0;white-space:pre-wrap">${linkifyTags(node.content)}</p>
     `;
 
     if (node.images && node.images.length > 0) {
@@ -115,23 +105,6 @@ function buildReplyForm(parentAid) {
     form.appendChild(textarea);
     form.appendChild(submitBtn);
     return form;
-}
-
-function toggleReplyForm(parentAid, form) {
-    form.style.display = form.style.display === "none" ? "block" : "none";
-}
-
-async function toggleLike(btn) {
-    const aid = btn.dataset.aid;
-    const liked = btn.dataset.liked === "1";
-    const res = await fetch(`/articles/${aid}/likes`, { method: liked ? "DELETE" : "POST" });
-    if (res.status === 401) { window.location.href = "/sign.html"; return; }
-    if (res.ok) {
-        const newLiked = !liked;
-        const count = parseInt(btn.textContent.replace(/\D/g, "")) + (newLiked ? 1 : -1);
-        btn.dataset.liked = newLiked ? "1" : "0";
-        btn.textContent = `${newLiked ? "♥" : "♡"} ${count}`;
-    }
 }
 
 async function loadThread() {

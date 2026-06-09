@@ -32,7 +32,7 @@ router.post("/:uid", requireAuth, async (req, res) => {
 });
 
 // フォロー解除
-router.delete("/:uid", requireAuth, (req, res) => {
+router.delete("/:uid", requireAuth, async (req, res) => {
     const follower_uid = req.session.uid;
     const followee_uid = req.params.uid;
 
@@ -43,6 +43,8 @@ router.delete("/:uid", requireAuth, (req, res) => {
     if (result.changes === 0) {
         return res.status(404).json({ error: "not following" });
     }
+
+    await buildTimeline(follower_uid);
 
     res.json({ ok: true });
 });

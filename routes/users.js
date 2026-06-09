@@ -88,4 +88,49 @@ router.patch("/me", requireAuth, async (req, res) => {
     res.json({ ok: true });
 });
 
+// 公開プロフィール（/me より後に定義）
+router.get("/:uid", requireAuth, (req, res) => {
+    const { uid } = req.params;
+    const myUid = req.session.uid;
+
+    const user = db.prepare(
+        "SELECT uid, name FROM users WHERE uid = ?"
+    ).get(uid);
+    if (!user) return res.status(404).json({ error: "user not found" });
+
+    const follower_count = db.prepare(
+        "SELECT COUNT(*) AS c FROM follows WHERE followee_uid = ?"
+    ).get(uid).c;
+
+    const following_count = db.prepare(
+        "SELECT COUNT(*) AS c FROM follows WHERE follower_uid = ?"
+    ).get(uid).c;
+
+    const is_following = !!db.prepare(
+        "SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?"
+    ).get(myUid, uid);
+
+    const articles = db.prepare(`
+        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
+               COUNT(l.uid) AS like_count,
+               MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
+               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count
+        FROM articles a
+        JOIN users u ON u.uid = a.uid
+        LEFT JOIN likes l ON l.aid = a.aid
+        WHERE a.uid = ?
+        GROUP BY a.aid
+        ORDER BY a.created_at DESC
+        LIMIT 20
+    `).all(myUid, uid);
+
+    for (const a of articles) {
+        a.images = db.prepare(
+            "SELECT thumbnail_url, url FROM images WHERE aid = ? ORDER BY iid ASC"
+        ).all(a.aid);
+    }
+
+    res.json({ user: { ...user, follower_count, following_count, is_following }, articles });
+});
+
 export default router;

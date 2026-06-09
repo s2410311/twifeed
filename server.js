@@ -13,6 +13,7 @@ import followsRouter from "./routes/follows.js";
 import timelineRouter from "./routes/timeline.js";
 import imagesRouter from "./routes/images.js";
 import usersRouter from "./routes/users.js";
+import tagsRouter from "./routes/tags.js";
 
 import { flushAllViews } from "./lib/views.js";
 import { flushAllExp } from "./lib/exp.js";
@@ -34,7 +35,13 @@ app.use("/follows", followsRouter);
 app.use("/timeline", timelineRouter);
 app.use("/images", imagesRouter);
 app.use("/users", usersRouter);
+app.use("/tags", tagsRouter);
 
+
+// SPAフォールバック：APIと静的ファイル以外は index.html を返す
+app.get("*", (_req, res) => {
+    res.sendFile("index.html", { root: "./public" });
+});
 
 const FLUSH_INTERVAL_MS = 60 * 1000; // 1分
 
