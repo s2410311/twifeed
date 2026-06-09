@@ -18,12 +18,26 @@ router.get("/", requireAuth, async (req, res) => {
 
     const placeholders = aids.map(() => "?").join(",");
     const articles = db.prepare(`
-        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.cid, a.created_at
+        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.cid, a.created_at,
+               COUNT(l.uid) AS like_count,
+               MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
+               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
+               p.uid AS parent_uid, pu.name AS parent_name, p.content AS parent_content
         FROM articles a
         JOIN users u ON u.uid = a.uid
+        LEFT JOIN likes l ON l.aid = a.aid
+        LEFT JOIN articles p ON p.aid = a.parent_aid
+        LEFT JOIN users pu ON pu.uid = p.uid
         WHERE a.aid IN (${placeholders})
+        GROUP BY a.aid
         ORDER BY a.created_at DESC
-    `).all(...aids);
+    `).all(uid, ...aids);
+
+    for (const a of articles) {
+        a.images = db.prepare(`
+            SELECT thumbnail_url, url FROM images WHERE aid = ? ORDER BY iid ASC
+        `).all(a.aid);
+    }
 
     const next_offset = aids.length === limit ? offset + limit : null;
 

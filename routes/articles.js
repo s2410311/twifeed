@@ -2,6 +2,7 @@ import express from "express";
 import db from "../db/index.js";
 import requireAuth from "../middleware/requireAuth.js";
 import { incrementView, getViewCount, flushAllViews } from "../lib/views.js";
+import { incrementExp, decrementExp, flushAllExp } from "../lib/exp.js";
 import { createArticle } from "../service/articles.js";
 
 const router = express.Router();
@@ -40,6 +41,38 @@ router.get("/:aid", async (req, res) => {
     res.json(article);
 });
 
+// スレッド全体取得
+router.get("/:aid/thread", requireAuth, (req, res) => {
+    const aid = parseInt(req.params.aid);
+    const uid = req.session.uid;
+    if (isNaN(aid)) return res.status(400).json({ error: "invalid aid" });
+
+    const article = db.prepare("SELECT aid, root_aid FROM articles WHERE aid = ?").get(aid);
+    if (!article) return res.status(404).json({ error: "article not found" });
+
+    const rootAid = article.root_aid ?? article.aid;
+
+    const articles = db.prepare(`
+        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
+               COUNT(l.uid) AS like_count,
+               MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked
+        FROM articles a
+        JOIN users u ON u.uid = a.uid
+        LEFT JOIN likes l ON l.aid = a.aid
+        WHERE a.aid = ? OR a.root_aid = ?
+        GROUP BY a.aid
+        ORDER BY a.created_at ASC
+    `).all(uid, rootAid, rootAid);
+
+    for (const a of articles) {
+        a.images = db.prepare(
+            "SELECT thumbnail_url, url FROM images WHERE aid = ? ORDER BY iid ASC"
+        ).all(a.aid);
+    }
+
+    res.json({ articles, root_aid: rootAid });
+});
+
 // 直接の返信一覧
 router.get("/:aid/replies", (req, res) => {
     const aid = parseInt(req.params.aid);
@@ -76,12 +109,12 @@ router.post("/:aid/replies", requireAuth, async (req, res) => {
 });
 
 // いいね
-router.post("/:aid/likes", requireAuth, (req, res) => {
+router.post("/:aid/likes", requireAuth, async (req, res) => {
     const aid = parseInt(req.params.aid);
     const uid = req.session.uid;
     if (isNaN(aid)) return res.status(400).json({ error: "invalid aid" });
 
-    const article = db.prepare("SELECT aid FROM articles WHERE aid = ?").get(aid);
+    const article = db.prepare("SELECT aid, uid FROM articles WHERE aid = ?").get(aid);
     if (!article) return res.status(404).json({ error: "article not found" });
 
     const existing = db.prepare("SELECT 1 FROM likes WHERE uid = ? AND aid = ?").get(uid, aid);
@@ -91,14 +124,19 @@ router.post("/:aid/likes", requireAuth, (req, res) => {
         "INSERT INTO likes (uid, aid, created_at) VALUES (?, ?, ?)"
     ).run(uid, aid, Date.now());
 
+    await incrementExp(article.uid);
+
     res.status(201).json({ ok: true });
 });
 
 // いいね解除
-router.delete("/:aid/likes", requireAuth, (req, res) => {
+router.delete("/:aid/likes", requireAuth, async (req, res) => {
     const aid = parseInt(req.params.aid);
     const uid = req.session.uid;
     if (isNaN(aid)) return res.status(400).json({ error: "invalid aid" });
+
+    const article = db.prepare("SELECT uid FROM articles WHERE aid = ?").get(aid);
+    if (!article) return res.status(404).json({ error: "article not found" });
 
     const result = db.prepare(
         "DELETE FROM likes WHERE uid = ? AND aid = ?"
@@ -106,12 +144,20 @@ router.delete("/:aid/likes", requireAuth, (req, res) => {
 
     if (result.changes === 0) return res.status(404).json({ error: "not liked" });
 
+    await decrementExp(article.uid);
+
     res.json({ ok: true });
 });
 
 // 閲覧数をDBにフラッシュ
 router.post("/flush-views", async (req, res) => {
     const count = await flushAllViews();
+    res.json({ flushed: count });
+});
+
+// 経験値をDBにフラッシュ
+router.post("/flush-exp", async (req, res) => {
+    const count = await flushAllExp();
     res.json({ flushed: count });
 });
 

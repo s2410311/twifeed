@@ -14,6 +14,9 @@ import timelineRouter from "./routes/timeline.js";
 import imagesRouter from "./routes/images.js";
 import usersRouter from "./routes/users.js";
 
+import { flushAllViews } from "./lib/views.js";
+import { flushAllExp } from "./lib/exp.js";
+
 const app = express();
 
 app.use(express.json());
@@ -32,6 +35,17 @@ app.use("/timeline", timelineRouter);
 app.use("/images", imagesRouter);
 app.use("/users", usersRouter);
 
+
+const FLUSH_INTERVAL_MS = 60 * 1000; // 1分
+
+setInterval(async () => {
+    try {
+        await flushAllViews();
+        await flushAllExp();
+    } catch (e) {
+        console.error("flush error:", e);
+    }
+}, FLUSH_INTERVAL_MS);
 
 app.listen(3000, () => {
     console.log("Server running");

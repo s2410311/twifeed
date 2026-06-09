@@ -8,11 +8,14 @@
 
   <h1>twifeed</h1>
 
-  <p>
-    <label>ユーザーID: <input id="uid" type="text" placeholder="例: alice"></label>
-  </p>
+  <h2>新規登録</h2>
+  <p><label>表示名: <input id="regName" type="text" placeholder="例: 山田太郎"></label></p>
+  <p><label>メールアドレス: <input id="regEmail" type="email" placeholder="例: taro@example.com"></label></p>
+  <button id="registerBtn">登録（Passkey）</button>
 
-  <button id="registerBtn">新規登録（Passkey）</button>
+  <hr>
+
+  <h2>ログイン</h2>
   <button id="loginBtn">ログイン（Passkey）</button>
 
   <pre id="log"></pre>
