@@ -10,6 +10,17 @@ export function isAllowedType(mimetype) {
     return ALLOWED_TYPES.has(mimetype);
 }
 
+export async function processAvatar(buffer, mimetype) {
+    const ext = mimetype === "image/png" ? "png" : mimetype === "image/webp" ? "webp" : "jpg";
+    await fs.mkdir(`${UPLOAD_DIR}/icons`, { recursive: true });
+    const name = randomUUID();
+    const filePath = `${UPLOAD_DIR}/icons/${name}.${ext}`;
+    await sharp(buffer)
+        .resize(200, 200, { fit: "cover", position: "centre" })
+        .toFile(filePath);
+    return { url: `/uploads/icons/${name}.${ext}` };
+}
+
 export async function processImage(buffer, mimetype) {
     const ext = mimetype === "image/png" ? "png" : mimetype === "image/webp" ? "webp" : "jpg";
     const name = randomUUID();

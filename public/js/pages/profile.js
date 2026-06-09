@@ -5,6 +5,21 @@ export function renderProfile() {
         <h1>プロフィール設定</h1>
         <a href="/" data-link>← ホームに戻る</a>
         <hr>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+            <div id="iconWrap" style="position:relative;width:80px;height:80px">
+                <div id="iconPlaceholder" style="width:80px;height:80px;border-radius:50%;background:#bbb;display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:bold">?</div>
+                <img id="iconImg" src="" alt="アイコン" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:none">
+            </div>
+            <div>
+                <label style="cursor:pointer">
+                    <input type="file" id="iconFile" accept="image/jpeg,image/png,image/webp" style="display:none">
+                    <button type="button" id="iconPickBtn">アイコン画像を選択</button>
+                </label>
+                <button id="iconUploadBtn" style="display:none;margin-left:8px">アップロード</button>
+                <p id="iconStatus" style="margin:4px 0;font-size:0.85em"></p>
+            </div>
+        </div>
+        <hr>
         <p>レベル: <strong id="level">-</strong> &nbsp; <span id="exp_to_next" style="color:#888;font-size:0.9em"></span></p>
         <p><label>ユーザーID (@): <input id="uid" type="text"></label></p>
         <p><label>表示名: <input id="name" type="text"></label></p>
@@ -27,6 +42,20 @@ export function renderProfile() {
         }
     }
 
+    function setIcon(url, name) {
+        const img = document.getElementById("iconImg");
+        const placeholder = document.getElementById("iconPlaceholder");
+        if (url) {
+            img.src = url;
+            img.style.display = "";
+            placeholder.style.display = "none";
+        } else {
+            img.style.display = "none";
+            placeholder.style.display = "flex";
+            placeholder.textContent = (name ?? "?").charAt(0).toUpperCase();
+        }
+    }
+
     async function loadProfile() {
         const res = await fetch("/users/me");
         if (res.status === 401) { navigate("/sign"); return; }
@@ -36,8 +65,49 @@ export function renderProfile() {
         document.getElementById("email").value = user.email ?? "";
         document.getElementById("level").textContent     = `Lv.${user.level}`;
         document.getElementById("exp_to_next").textContent = `次のレベルまで ${user.exp_to_next} exp`;
+        setIcon(user.icon_url, user.name);
         await loadFollowing(user.uid);
     }
+
+    const iconFile = document.getElementById("iconFile");
+    const iconPickBtn = document.getElementById("iconPickBtn");
+    const iconUploadBtn = document.getElementById("iconUploadBtn");
+    const iconStatus = document.getElementById("iconStatus");
+
+    iconPickBtn.addEventListener("click", () => iconFile.click());
+
+    iconFile.addEventListener("change", () => {
+        if (iconFile.files.length === 0) return;
+        const file = iconFile.files[0];
+        const previewUrl = URL.createObjectURL(file);
+        setIcon(previewUrl, null);
+        iconUploadBtn.style.display = "";
+        iconStatus.textContent = `${file.name} を選択中`;
+        iconStatus.style.color = "#555";
+    });
+
+    iconUploadBtn.addEventListener("click", async () => {
+        if (iconFile.files.length === 0) return;
+        iconUploadBtn.disabled = true;
+        iconStatus.textContent = "アップロード中…";
+        const form = new FormData();
+        form.append("icon", iconFile.files[0]);
+        const r = await fetch("/users/me/icon", { method: "POST", body: form });
+        iconUploadBtn.disabled = false;
+        if (r.ok) {
+            const { url } = await r.json();
+            setIcon(url, null);
+            iconUploadBtn.style.display = "none";
+            iconFile.value = "";
+            iconStatus.textContent = "アイコンを更新しました";
+            iconStatus.style.color = "green";
+            setTimeout(() => { iconStatus.textContent = ""; }, 3000);
+        } else {
+            const err = await r.json();
+            iconStatus.textContent = "エラー: " + (err.error || r.status);
+            iconStatus.style.color = "red";
+        }
+    });
 
     async function loadFollowing(uid) {
         const res = await fetch(`/follows/${encodeURIComponent(uid)}/following`);

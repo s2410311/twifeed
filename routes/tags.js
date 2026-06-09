@@ -17,11 +17,13 @@ router.get("/:name/articles", requireAuth, (req, res) => {
         SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
                COUNT(l.uid) AS like_count,
                MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
-               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count
+               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
+               ui.url AS icon_url
         FROM articles a
         JOIN users u ON u.uid = a.uid
         JOIN a2t ON a2t.aid = a.aid
         LEFT JOIN likes l ON l.aid = a.aid
+        LEFT JOIN user_images ui ON ui.id = a.uid
         WHERE a2t.tid = ?
         GROUP BY a.aid
         ORDER BY a.created_at DESC

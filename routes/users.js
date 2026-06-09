@@ -1,9 +1,20 @@
 import express from "express";
+import multer from "multer";
 import db from "../db/index.js";
 import requireAuth from "../middleware/requireAuth.js";
 import redis from "../lib/redisClient.js";
 import { regenerateAuthenticatedSession } from "../service/sessionAuth.js";
 import { expToLevel, levelToExp } from "../utils/level.js";
+import { processAvatar, isAllowedType } from "../utils/processImage.js";
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        if (isAllowedType(file.mimetype)) cb(null, true);
+        else cb(new Error("unsupported image type"));
+    },
+});
 
 const router = express.Router();
 
@@ -21,6 +32,8 @@ router.get("/me", requireAuth, async (req, res) => {
     const level = expToLevel(totalExp);
     const expForNext = levelToExp(level + 1);
 
+    const iconRow = db.prepare("SELECT url FROM user_images WHERE id = ?").get(uid);
+
     res.json({
         uid: user.uid,
         name: user.name,
@@ -28,7 +41,27 @@ router.get("/me", requireAuth, async (req, res) => {
         level,
         exp: totalExp,
         exp_to_next: expForNext - totalExp,
+        icon_url: iconRow?.url ?? null,
     });
+});
+
+router.post("/me/icon", requireAuth, upload.single("icon"), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "no image provided" });
+    try {
+        const uid = req.session.uid;
+        const { url } = await processAvatar(req.file.buffer, req.file.mimetype);
+        db.prepare(
+            "INSERT OR REPLACE INTO user_images (id, uid, url, created_at) VALUES (?, ?, ?, ?)"
+        ).run(uid, uid, url, Date.now());
+        res.json({ url });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.use((err, _req, res, _next) => {
+    res.status(400).json({ error: err.message });
 });
 
 const changeUid = db.transaction((oldUid, newUid) => {
@@ -110,6 +143,8 @@ router.get("/:uid", requireAuth, (req, res) => {
         "SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?"
     ).get(myUid, uid);
 
+    const iconRow = db.prepare("SELECT url FROM user_images WHERE id = ?").get(uid);
+
     const articles = db.prepare(`
         SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
                COUNT(l.uid) AS like_count,
@@ -130,7 +165,7 @@ router.get("/:uid", requireAuth, (req, res) => {
         ).all(a.aid);
     }
 
-    res.json({ user: { ...user, follower_count, following_count, is_following }, articles });
+    res.json({ user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null }, articles });
 });
 
 export default router;

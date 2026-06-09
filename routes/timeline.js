@@ -22,12 +22,14 @@ router.get("/", requireAuth, async (req, res) => {
                COUNT(l.uid) AS like_count,
                MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
                (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
-               p.uid AS parent_uid, pu.name AS parent_name, p.content AS parent_content
+               p.uid AS parent_uid, pu.name AS parent_name, p.content AS parent_content,
+               ui.url AS icon_url
         FROM articles a
         JOIN users u ON u.uid = a.uid
         LEFT JOIN likes l ON l.aid = a.aid
         LEFT JOIN articles p ON p.aid = a.parent_aid
         LEFT JOIN users pu ON pu.uid = p.uid
+        LEFT JOIN user_images ui ON ui.id = a.uid
         WHERE a.aid IN (${placeholders})
         GROUP BY a.aid
         ORDER BY a.created_at DESC

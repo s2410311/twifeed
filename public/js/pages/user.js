@@ -5,8 +5,13 @@ export function renderUser(uid) {
     document.getElementById("app").innerHTML = `
         <a href="/" data-link>← ホームに戻る</a>
         <hr>
-        <h1 id="userName"></h1>
-        <p id="userUid" style="color:#888"></p>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
+            <div id="userIconWrap"></div>
+            <div>
+                <h1 id="userName" style="margin:0"></h1>
+                <p id="userUid" style="color:#888;margin:2px 0"></p>
+            </div>
+        </div>
         <p id="userStats"></p>
         <button id="followBtn" style="display:none"></button>
         <hr>
@@ -24,6 +29,20 @@ export function renderUser(uid) {
         document.getElementById("userName").textContent  = user.name;
         document.getElementById("userUid").textContent   = `@${user.uid}`;
         document.getElementById("userStats").textContent = `フォロワー ${user.follower_count}　フォロー中 ${user.following_count}`;
+
+        const iconWrap = document.getElementById("userIconWrap");
+        if (user.icon_url) {
+            const img = document.createElement("img");
+            img.src = user.icon_url;
+            img.alt = "";
+            img.style.cssText = "width:64px;height:64px;border-radius:50%;object-fit:cover";
+            iconWrap.appendChild(img);
+        } else {
+            const ph = document.createElement("div");
+            ph.style.cssText = "width:64px;height:64px;border-radius:50%;background:#bbb;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;font-weight:bold";
+            ph.textContent = user.name.charAt(0).toUpperCase();
+            iconWrap.appendChild(ph);
+        }
 
         const followBtn = document.getElementById("followBtn");
         followBtn.style.display = "inline";

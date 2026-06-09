@@ -52,11 +52,21 @@ export function renderCard(a, { showQuote = true } = {}) {
         </div>
     ` : "";
 
+    const avatarStyle = "width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;flex-shrink:0";
+    const avatarEl = a.icon_url
+        ? `<img src="${escapeHtml(a.icon_url)}" style="${avatarStyle}" alt="">`
+        : `<span style="${avatarStyle};background:#bbb;display:inline-flex;align-items:center;justify-content:center;font-size:15px;color:#fff;font-weight:bold">${escapeHtml(a.name.charAt(0).toUpperCase())}</span>`;
+
     div.innerHTML = `
         ${quote}
-        <strong><a href="/user/${encodeURIComponent(a.uid)}" data-link style="color:inherit;text-decoration:none">${escapeHtml(a.name)}</a></strong>
-        <span style="color:#888;font-size:0.85em"> @${escapeHtml(a.uid)} · ${formatDate(a.created_at)}</span>
-        <p style="margin:4px 0;white-space:pre-wrap">${linkifyTags(a.content)}</p>
+        <div style="display:flex;align-items:flex-start;gap:0">
+            <a href="/user/${encodeURIComponent(a.uid)}" data-link style="display:inline-flex">${avatarEl}</a>
+            <div style="flex:1;min-width:0">
+                <strong><a href="/user/${encodeURIComponent(a.uid)}" data-link style="color:inherit;text-decoration:none">${escapeHtml(a.name)}</a></strong>
+                <span style="color:#888;font-size:0.85em"> @${escapeHtml(a.uid)} · ${formatDate(a.created_at)}</span>
+                <p style="margin:4px 0;white-space:pre-wrap">${linkifyTags(a.content)}</p>
+            </div>
+        </div>
     `;
 
     if (a.images?.length > 0) {
