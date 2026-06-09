@@ -12,6 +12,7 @@ import articlesRouter from "./routes/articles.js";
 import followsRouter from "./routes/follows.js";
 import timelineRouter from "./routes/timeline.js";
 import imagesRouter from "./routes/images.js";
+import usersRouter from "./routes/users.js";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/articles", articlesRouter);
 app.use("/follows", followsRouter);
 app.use("/timeline", timelineRouter);
 app.use("/images", imagesRouter);
+app.use("/users", usersRouter);
 
 
 app.listen(3000, () => {

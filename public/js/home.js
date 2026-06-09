@@ -72,7 +72,14 @@ async function post() {
 
     if (res.status === 201) {
         document.getElementById("postContent").value = "";
-        status.textContent = "投稿しました";
+        status.textContent = "投稿しました！";
+        status.style.color = "green";
+        status.style.fontWeight = "bold";
+        setTimeout(() => {
+            status.textContent = "";
+            status.style.color = "";
+            status.style.fontWeight = "";
+        }, 3000);
         await loadTimeline(0, false);
     } else {
         const err = await res.json();
