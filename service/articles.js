@@ -1,6 +1,8 @@
 import db from "../db/index.js";
 import { extractTags } from "../utils/extractTags.js";
 import { pushToTimeline } from "../lib/timelineStore.js";
+import { addToFeed } from "../lib/feedStore.js";
+import { notifyUser, notifyAll } from "../lib/sseClients.js";
 
 const insertArticleWithTags = db.transaction((uid, cid, parent_aid, root_aid, content) => {
     const { lastInsertRowid: aid } = db.prepare(`
@@ -59,10 +61,31 @@ export async function createArticle(uid, { content, cid = null, parent_aid = nul
         "SELECT follower_uid FROM follows WHERE followee_uid = ?"
     ).all(uid);
 
+    const now = Date.now();
     await Promise.all([
         pushToTimeline(uid, aid),
-        ...followers.map(f => pushToTimeline(f.follower_uid, aid))
+        ...followers.map(f => pushToTimeline(f.follower_uid, aid)),
+        ...(parent_aid == null ? [addToFeed(aid, cid, now)] : []),
     ]);
+
+    if (parent_aid == null) {
+        const user = db.prepare("SELECT name FROM users WHERE uid = ?").get(uid);
+        const icon = db.prepare("SELECT url FROM user_images WHERE id = ?").get(uid);
+        const category = cid ? db.prepare("SELECT name FROM categories WHERE cid = ?").get(cid) : null;
+        const images = image_ids.length > 0
+            ? db.prepare(`SELECT thumbnail_url, url FROM images WHERE iid IN (${image_ids.map(() => "?").join(",")}) ORDER BY iid ASC`).all(...image_ids)
+            : [];
+        const article = {
+            aid, uid, name: user.name, content: content.trim(),
+            parent_aid: null, root_aid: null, cid: cid ?? null,
+            created_at: now, like_count: 0, liked: 0, reply_count: 0,
+            icon_url: icon?.url ?? null,
+            category_name: category?.name ?? null,
+            images,
+        };
+        notifyAll("global_article", article);
+        for (const f of followers) notifyUser(f.follower_uid, "following_article", article);
+    }
 
     return { aid };
 }

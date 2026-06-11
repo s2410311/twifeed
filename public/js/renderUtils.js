@@ -64,6 +64,7 @@ export function renderCard(a, { showQuote = true } = {}) {
             <div style="flex:1;min-width:0">
                 <strong><a href="/user/${encodeURIComponent(a.uid)}" data-link style="color:inherit;text-decoration:none">${escapeHtml(a.name)}</a></strong>
                 <span style="color:#888;font-size:0.85em"> @${escapeHtml(a.uid)} · ${formatDate(a.created_at)}</span>
+                ${a.category_name ? `<span style="font-size:0.75em;background:#eef;color:#66a;border-radius:4px;padding:1px 6px;margin-left:4px">${escapeHtml(a.category_name)}</span>` : ""}
                 <p style="margin:4px 0;white-space:pre-wrap">${linkifyTags(a.content)}</p>
             </div>
         </div>

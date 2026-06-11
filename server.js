@@ -14,9 +14,12 @@ import timelineRouter from "./routes/timeline.js";
 import imagesRouter from "./routes/images.js";
 import usersRouter from "./routes/users.js";
 import tagsRouter from "./routes/tags.js";
+import categoriesRouter from "./routes/categories.js";
+import streamRouter from "./routes/stream.js";
 
 import { flushAllViews } from "./lib/views.js";
 import { flushAllExp } from "./lib/exp.js";
+import { rebuildFeed } from "./lib/feedStore.js";
 
 const app = express();
 
@@ -36,6 +39,8 @@ app.use("/timeline", timelineRouter);
 app.use("/images", imagesRouter);
 app.use("/users", usersRouter);
 app.use("/tags", tagsRouter);
+app.use("/categories", categoriesRouter);
+app.use("/stream", streamRouter);
 
 
 // SPAフォールバック：APIと静的ファイル以外は index.html を返す
@@ -49,6 +54,7 @@ setInterval(async () => {
     try {
         await flushAllViews();
         await flushAllExp();
+        await rebuildFeed();
     } catch (e) {
         console.error("flush error:", e);
     }
