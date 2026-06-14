@@ -125,6 +125,8 @@ router.patch("/me", requireAuth, async (req, res) => {
 router.get("/:uid", requireAuth, (req, res) => {
     const { uid } = req.params;
     const myUid = req.session.uid;
+    const offset = Math.max(0, parseInt(req.query.offset) || 0);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
 
     const user = db.prepare(
         "SELECT uid, name FROM users WHERE uid = ?"
@@ -146,18 +148,22 @@ router.get("/:uid", requireAuth, (req, res) => {
     const iconRow = db.prepare("SELECT url FROM user_images WHERE id = ?").get(uid);
 
     const articles = db.prepare(`
-        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
+        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.cid, a.created_at,
                COUNT(l.uid) AS like_count,
                MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
-               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count
+               (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
+               ui.url AS icon_url,
+               c.name AS category_name
         FROM articles a
         JOIN users u ON u.uid = a.uid
         LEFT JOIN likes l ON l.aid = a.aid
+        LEFT JOIN user_images ui ON ui.id = a.uid
+        LEFT JOIN categories c ON c.cid = a.cid
         WHERE a.uid = ?
         GROUP BY a.aid
         ORDER BY a.created_at DESC
-        LIMIT 20
-    `).all(myUid, uid);
+        LIMIT ? OFFSET ?
+    `).all(myUid, uid, limit, offset);
 
     for (const a of articles) {
         a.images = db.prepare(
@@ -165,7 +171,13 @@ router.get("/:uid", requireAuth, (req, res) => {
         ).all(a.aid);
     }
 
-    res.json({ user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null }, articles });
+    const next_offset = articles.length === limit ? offset + limit : null;
+
+    res.json({
+        user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null },
+        articles,
+        next_offset,
+    });
 });
 
 export default router;

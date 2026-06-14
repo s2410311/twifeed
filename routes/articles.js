@@ -13,24 +13,41 @@ router.get("/search", requireAuth, (req, res) => {
     const uid = req.session.uid;
     const offset = Math.max(0, parseInt(req.query.offset) || 0);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const cid = req.query.cid ? parseInt(req.query.cid) : null;
 
-    if (!q) return res.json({ articles: [], next_offset: null });
+    if (!q && !cid) return res.json({ articles: [], next_offset: null });
+
+    const conditions = [];
+    const params = [uid];
+
+    if (q) {
+        conditions.push("(a.content LIKE ? OR u.name LIKE ? OR a.uid LIKE ?)");
+        params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    }
+    if (cid) {
+        conditions.push("a.cid = ?");
+        params.push(cid);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
 
     const articles = db.prepare(`
-        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.created_at,
+        SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.cid, a.created_at,
                COUNT(l.uid) AS like_count,
                MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
                (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
-               ui.url AS icon_url
+               ui.url AS icon_url,
+               c.name AS category_name
         FROM articles a
         JOIN users u ON u.uid = a.uid
         LEFT JOIN likes l ON l.aid = a.aid
         LEFT JOIN user_images ui ON ui.id = a.uid
-        WHERE a.content LIKE ?
+        LEFT JOIN categories c ON c.cid = a.cid
+        ${where}
         GROUP BY a.aid
         ORDER BY a.created_at DESC
         LIMIT ? OFFSET ?
-    `).all(uid, `%${q}%`, limit, offset);
+    `).all(...params, limit, offset);
 
     for (const a of articles) {
         a.images = db.prepare(
