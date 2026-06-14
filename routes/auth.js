@@ -39,7 +39,7 @@ router.post("/options", async (req, res) => {
         console.log("auth/option,started");
         const options = await generateAuthenticationOptions({
             rpID: RP_ID,
-            userVerification: "perferred"
+            userVerification: "preferred"
         });
 
 
@@ -74,10 +74,6 @@ router.post("/verify", async (req, res) => {
         const record = await getChallenge(challenge);
 
         if (!record || record.type !== "authentication") {
-            return res.json({ verified: false });
-        }
-
-        if (record.sessionID !== req.session.sid) {
             return res.json({ verified: false });
         }
 

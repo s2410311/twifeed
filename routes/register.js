@@ -102,10 +102,6 @@ router.post("/verify", async (req, res) => {
             return res.json({ verified: false });
         }
 
-        if (record.sessionID !== req.session.sid) {
-            return res.json({ verified: false });
-        }
-
         const verification = await verifyRegistrationResponse({
             response: body,
             expectedChallenge: record.challenge,

@@ -2,8 +2,10 @@ import { navigate } from "../router.js";
 import { hideNav } from "../nav.js";
 
 function bufferToBase64url(buffer) {
-    return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const bytes = new Uint8Array(buffer);
+    let str = "";
+    for (const b of bytes) str += String.fromCharCode(b);
+    return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function base64urlToBuffer(base64url) {

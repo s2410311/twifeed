@@ -58,21 +58,21 @@ export function renderHome() {
 
     // ── Categories ──
     async function loadCategories() {
-        const res = await fetch("/categories");
-        if (!res.ok) return;
-        const data = await res.json();
-        categories = data.categories;
-
-        const sel = document.getElementById("categorySelect");
         const row = document.getElementById("chipRow");
+        const sel = document.getElementById("categorySelect");
 
-        // First chip: フォロー中
+        // フォロー中チップは常に最初に追加
         const followChip = document.createElement("button");
         followChip.className = "tw-chip active";
         followChip.textContent = "フォロー中";
         followChip.dataset.mode = "following";
         followChip.addEventListener("click", () => selectChip(followChip, "following", null));
         row.appendChild(followChip);
+
+        const res = await fetch("/categories");
+        if (!res.ok) return;
+        const data = await res.json();
+        categories = data.categories;
 
         for (const c of categories) {
             const opt = document.createElement("option");
