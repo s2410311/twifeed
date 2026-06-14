@@ -10,17 +10,12 @@ export function renderHome() {
 
     document.getElementById("app").innerHTML = `
         <div class="tw-header">
-            <span class="tw-header-logo">TwiFeed</span>
-            <div class="tw-search-wrap" style="max-width:220px">
+            <div class="tw-search-wrap">
                 <input class="tw-search-input" id="searchInput" type="text" placeholder="検索…">
             </div>
             <button class="tw-header-icon-btn" id="searchBtn" title="検索">🔍</button>
         </div>
-        <div class="tw-tabs">
-            <button class="tw-tab active" id="tabFollowing">フォロー中</button>
-            <button class="tw-tab"        id="tabAll">全体</button>
-        </div>
-        <div class="tw-chips" id="chipRow" style="display:none"></div>
+        <div class="tw-chips" id="chipRow"></div>
         <div class="tw-page" id="timeline"></div>
         <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
         <button class="tw-fab" id="fabBtn" title="投稿">✏️</button>
@@ -58,7 +53,7 @@ export function renderHome() {
 
     let nextOffset = null;
     let activeCid  = null;
-    let activeTab  = "following";
+    let activeMode = "following"; // "following" | "all"
     let categories = [];
 
     // ── Categories ──
@@ -70,6 +65,15 @@ export function renderHome() {
 
         const sel = document.getElementById("categorySelect");
         const row = document.getElementById("chipRow");
+
+        // First chip: フォロー中
+        const followChip = document.createElement("button");
+        followChip.className = "tw-chip active";
+        followChip.textContent = "フォロー中";
+        followChip.dataset.mode = "following";
+        followChip.addEventListener("click", () => selectChip(followChip, "following", null));
+        row.appendChild(followChip);
+
         for (const c of categories) {
             const opt = document.createElement("option");
             opt.value = c.cid;
@@ -80,19 +84,24 @@ export function renderHome() {
             btn.className = "tw-chip";
             btn.textContent = c.name;
             btn.dataset.cid = c.cid;
-            btn.addEventListener("click", () => {
-                activeCid = activeCid === c.cid ? null : c.cid;
-                row.querySelectorAll(".tw-chip").forEach(b => b.classList.toggle("active", b.dataset.cid == activeCid));
-                loadTimeline(0, false);
-            });
+            btn.addEventListener("click", () => selectChip(btn, "all", c.cid));
             row.appendChild(btn);
         }
+    }
+
+    function selectChip(chip, mode, cid) {
+        activeMode = mode;
+        activeCid  = cid;
+        document.getElementById("chipRow").querySelectorAll(".tw-chip")
+            .forEach(b => b.classList.remove("active"));
+        chip.classList.add("active");
+        loadTimeline(0, false);
     }
 
     // ── Timeline ──
     async function loadTimeline(offset = 0, append = false) {
         const params = new URLSearchParams({ offset, limit: 20 });
-        if (activeTab === "all") {
+        if (activeMode === "all") {
             params.set("mode", "all");
             if (activeCid) params.set("cid", activeCid);
         }
@@ -109,18 +118,6 @@ export function renderHome() {
         }
         nextOffset = data.next_offset;
         document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
-    }
-
-    // ── Tabs ──
-    function setTab(tab) {
-        activeTab = tab;
-        activeCid = null;
-        document.getElementById("tabFollowing").classList.toggle("active", tab === "following");
-        document.getElementById("tabAll").classList.toggle("active", tab === "all");
-        const row = document.getElementById("chipRow");
-        row.style.display = tab === "all" ? "flex" : "none";
-        row.querySelectorAll(".tw-chip").forEach(b => b.classList.remove("active"));
-        loadTimeline(0, false);
     }
 
     // ── Compose ──
@@ -180,11 +177,11 @@ export function renderHome() {
     }
     activeEventSource = new EventSource("/stream");
     activeEventSource.addEventListener("following_article", (e) => {
-        if (activeTab !== "following") return;
+        if (activeMode !== "following") return;
         prependCard(JSON.parse(e.data));
     });
     activeEventSource.addEventListener("global_article", (e) => {
-        if (activeTab !== "all") return;
+        if (activeMode !== "all") return;
         const a = JSON.parse(e.data);
         if (activeCid && a.cid !== activeCid) return;
         prependCard(a);
@@ -209,8 +206,6 @@ export function renderHome() {
     document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") goSearch(); });
     document.getElementById("searchBtn").addEventListener("click", goSearch);
 
-    document.getElementById("tabFollowing").addEventListener("click", () => setTab("following"));
-    document.getElementById("tabAll").addEventListener("click", () => setTab("all"));
     document.getElementById("fabBtn").addEventListener("click", openModal);
     document.getElementById("closeBtn").addEventListener("click", closeModal);
     document.getElementById("submitBtn").addEventListener("click", post);

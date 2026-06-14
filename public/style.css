@@ -2,10 +2,10 @@
    Design tokens
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
-  --blue:        #1d9bf0;
-  --blue-dark:   #1784cc;
-  --blue-glow:   rgba(29,155,240,0.25);
-  --blue-tint:   rgba(29,155,240,0.08);
+  --blue:        #111111;
+  --blue-dark:   #000000;
+  --blue-glow:   rgba(0,0,0,0.18);
+  --blue-tint:   rgba(0,0,0,0.05);
 
   --bg:          #ffffff;
   --bg-subtle:   #f7f9fc;
@@ -77,12 +77,9 @@ body {
   flex: 1; letter-spacing: -0.2px;
 }
 .tw-header-logo {
-  font-size: 1.18em; font-weight: 900;
-  letter-spacing: -0.8px; flex: 1;
-  background: linear-gradient(135deg, #1d9bf0, #7b68ee);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  font-size: 1.12em; font-weight: 800;
+  letter-spacing: -0.5px; flex: 1;
+  color: var(--text);
 }
 .tw-header-icon-btn {
   width: 36px; height: 36px; border-radius: var(--r-full);
@@ -111,8 +108,8 @@ body {
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .tw-search-input:focus {
-  border-color: var(--blue); background: var(--bg);
-  box-shadow: 0 0 0 3px var(--blue-tint);
+  border-color: var(--text); background: var(--bg);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
 }
 .tw-search-input::placeholder { color: var(--text3); }
 
@@ -217,13 +214,14 @@ body {
 
 /* Category badge */
 .tw-badge {
-  display: inline-block; font-size: 0.75em; font-weight: 600;
-  color: var(--blue); background: var(--blue-tint);
+  display: inline-block; font-size: 0.72em; font-weight: 600;
+  color: var(--text2); background: var(--bg-hover);
   padding: 2px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--border);
   margin-bottom: 5px; text-decoration: none; letter-spacing: 0.2px;
-  transition: background var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-a.tw-badge:hover { background: rgba(29,155,240,0.16); }
+a.tw-badge:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
 
 /* Content */
 .tw-content {
@@ -440,7 +438,7 @@ a.tw-badge:hover { background: rgba(29,155,240,0.16); }
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 .tw-banner {
   height: 140px;
-  background: linear-gradient(135deg, #1d9bf0 0%, #7b68ee 60%, #b06ab3 100%);
+  background: linear-gradient(160deg, #1a1a1a 0%, #3d3d3d 100%);
 }
 .tw-profile-av-row {
   display: flex; justify-content: space-between; align-items: flex-end;
@@ -493,9 +491,7 @@ a.tw-badge:hover { background: rgba(29,155,240,0.16); }
 }
 .tw-sign-logo {
   font-size: 2.6em; font-weight: 900; letter-spacing: -1.5px; margin-bottom: 40px;
-  background: linear-gradient(135deg, #1d9bf0, #7b68ee);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--text);
 }
 .tw-sign-heading {
   font-size: 1.4em; font-weight: 800; margin-bottom: 24px;
