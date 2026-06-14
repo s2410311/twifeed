@@ -37,12 +37,15 @@ router.get("/search", requireAuth, (req, res) => {
                MAX(CASE WHEN l.uid = ? THEN 1 ELSE 0 END) AS liked,
                (SELECT COUNT(*) FROM articles r WHERE r.root_aid = a.aid) AS reply_count,
                ui.url AS icon_url,
-               c.name AS category_name
+               c.name AS category_name,
+               p.uid AS parent_uid, pu.name AS parent_name, p.content AS parent_content
         FROM articles a
         JOIN users u ON u.uid = a.uid
         LEFT JOIN likes l ON l.aid = a.aid
         LEFT JOIN user_images ui ON ui.id = a.uid
         LEFT JOIN categories c ON c.cid = a.cid
+        LEFT JOIN articles p ON p.aid = a.parent_aid
+        LEFT JOIN users pu ON pu.uid = p.uid
         ${where}
         GROUP BY a.aid
         ORDER BY a.created_at DESC

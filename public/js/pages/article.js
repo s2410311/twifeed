@@ -1,5 +1,6 @@
 import { navigate } from "../router.js";
 import { escapeHtml, formatDate, linkifyTags, toggleLike } from "../renderUtils.js";
+import { showNav } from "../nav.js";
 
 function buildTree(articles, rootAid) {
     const map = {};
@@ -12,91 +13,149 @@ function buildTree(articles, rootAid) {
     return map[rootAid];
 }
 
-function buildReplyForm(parentAid, reload) {
-    const form = document.createElement("div");
-    form.style.display = "none";
-    form.style.marginTop = "6px";
-    const textarea = document.createElement("textarea");
-    textarea.rows = 2; textarea.cols = 40; textarea.placeholder = "返信を入力…";
-    const btn = document.createElement("button");
-    btn.textContent = "返信する";
-    btn.style.marginLeft = "4px";
-    btn.addEventListener("click", async () => {
-        const content = textarea.value.trim();
+function renderNode(node, depth, reload) {
+    const wrap = document.createElement("div");
+
+    const item = document.createElement("div");
+    item.className = "tw-thread-item";
+
+    // Left: avatar + line
+    const left = document.createElement("div");
+    left.className = "tw-thread-left";
+
+    const avLink = document.createElement("a");
+    avLink.href = `/user/${encodeURIComponent(node.uid)}`;
+    avLink.setAttribute("data-link", "");
+    if (node.icon_url) {
+        const img = document.createElement("img");
+        img.className = "tw-avatar";
+        img.src = node.icon_url;
+        img.alt = "";
+        avLink.appendChild(img);
+    } else {
+        const ph = document.createElement("span");
+        ph.className = "tw-avatar-ph";
+        ph.textContent = node.name.charAt(0).toUpperCase();
+        avLink.appendChild(ph);
+    }
+    left.appendChild(avLink);
+    if (node.children.length > 0) {
+        const line = document.createElement("div");
+        line.className = "tw-thread-line";
+        left.appendChild(line);
+    }
+    item.appendChild(left);
+
+    // Right: body
+    const body = document.createElement("div");
+    body.className = "tw-thread-body";
+
+    body.insertAdjacentHTML("beforeend", `
+        <div class="tw-card-meta">
+            <a class="tw-name" href="/user/${encodeURIComponent(node.uid)}" data-link>${escapeHtml(node.name)}</a>
+            <span class="tw-uid">@${escapeHtml(node.uid)}</span>
+            <span class="tw-dot">·</span>
+            <span class="tw-date">${formatDate(node.created_at)}</span>
+        </div>
+    `);
+
+    const content = document.createElement("p");
+    content.className = "tw-content";
+    content.innerHTML = linkifyTags(node.content);
+    body.appendChild(content);
+
+    if (node.images?.length > 0) {
+        const n = Math.min(node.images.length, 4);
+        const grid = document.createElement("div");
+        grid.className = `tw-imgs n${n}`;
+        node.images.slice(0, 4).forEach(img => {
+            const el = document.createElement("img");
+            el.src = img.thumbnail_url;
+            el.alt = "";
+            el.addEventListener("click", () => window.open(img.url, "_blank"));
+            grid.appendChild(el);
+        });
+        body.appendChild(grid);
+    }
+
+    // Actions
+    const liked = !!node.liked;
+    const actions = document.createElement("div");
+    actions.className = "tw-actions";
+
+    const likeBtn = document.createElement("button");
+    likeBtn.className = `tw-act like${liked ? " liked" : ""}`;
+    likeBtn.dataset.aid   = node.aid;
+    likeBtn.dataset.liked = liked ? "1" : "0";
+    likeBtn.innerHTML = `<span class="li">${liked ? "♥" : "♡"}</span><span class="lc">${node.like_count}</span>`;
+    likeBtn.addEventListener("click", () => toggleLike(likeBtn));
+
+    const replyToggle = document.createElement("button");
+    replyToggle.className = "tw-act";
+    replyToggle.textContent = "💬 返信";
+    actions.appendChild(likeBtn);
+    actions.appendChild(replyToggle);
+    body.appendChild(actions);
+
+    // Inline reply form (hidden)
+    const replyBar = document.createElement("div");
+    replyBar.className = "tw-reply-bar";
+    replyBar.style.display = "none";
+    replyBar.innerHTML = `
+        <div class="tw-compose-right tw-reply-box">
+            <textarea class="tw-reply-textarea" rows="2" placeholder="返信する…"></textarea>
+            <div class="tw-reply-footer">
+                <button class="tw-reply-btn">返信する</button>
+            </div>
+        </div>
+    `;
+    replyToggle.addEventListener("click", () => {
+        replyBar.style.display = replyBar.style.display === "none" ? "flex" : "none";
+        if (replyBar.style.display === "flex") replyBar.querySelector("textarea").focus();
+    });
+    replyBar.querySelector(".tw-reply-btn").addEventListener("click", async () => {
+        const ta = replyBar.querySelector("textarea");
+        const content = ta.value.trim();
         if (!content) return;
-        const res = await fetch(`/articles/${parentAid}/replies`, {
+        const res = await fetch(`/articles/${node.aid}/replies`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content })
         });
         if (res.status === 401) { navigate("/sign"); return; }
-        if (res.status === 201) { textarea.value = ""; form.style.display = "none"; reload(); }
-    });
-    form.appendChild(textarea);
-    form.appendChild(btn);
-    return form;
-}
-
-function renderNode(node, depth, reload) {
-    const div = document.createElement("div");
-    div.style.marginLeft   = `${depth * 24}px`;
-    div.style.borderLeft   = depth > 0 ? "2px solid #ddd" : "none";
-    div.style.paddingLeft  = depth > 0 ? "8px" : "0";
-    div.style.marginBottom = "8px";
-
-    const liked = !!node.liked;
-    const likeBtn = document.createElement("button");
-    likeBtn.textContent   = `${liked ? "♥" : "♡"} ${node.like_count}`;
-    likeBtn.dataset.aid   = node.aid;
-    likeBtn.dataset.liked = liked ? "1" : "0";
-    likeBtn.addEventListener("click", () => toggleLike(likeBtn));
-
-    const replyBtn = document.createElement("button");
-    replyBtn.textContent      = "返信";
-    replyBtn.style.marginLeft = "8px";
-    const replyForm = buildReplyForm(node.aid, reload);
-    replyBtn.addEventListener("click", () => {
-        replyForm.style.display = replyForm.style.display === "none" ? "block" : "none";
+        if (res.status === 201) { ta.value = ""; replyBar.style.display = "none"; reload(); }
     });
 
-    div.innerHTML = `
-        <strong><a href="/user/${encodeURIComponent(node.uid)}" data-link style="color:inherit;text-decoration:none">${escapeHtml(node.name)}</a></strong>
-        <span style="color:#888;font-size:0.85em"> @${escapeHtml(node.uid)} · ${formatDate(node.created_at)}</span>
-        <p style="margin:4px 0;white-space:pre-wrap">${linkifyTags(node.content)}</p>
-    `;
+    item.appendChild(body);
+    wrap.appendChild(item);
+    wrap.appendChild(replyBar);
 
-    if (node.images?.length > 0) {
-        const wrap = document.createElement("div");
-        for (const img of node.images) {
-            const el = document.createElement("img");
-            el.src = img.thumbnail_url;
-            el.style.cssText = "max-width:200px;max-height:200px;margin-right:4px;cursor:pointer";
-            el.addEventListener("click", () => window.open(img.url, "_blank"));
-            wrap.appendChild(el);
-        }
-        div.appendChild(wrap);
+    for (const child of node.children) {
+        wrap.appendChild(renderNode(child, depth + 1, reload));
     }
-
-    div.appendChild(likeBtn);
-    div.appendChild(replyBtn);
-    div.appendChild(replyForm);
-    for (const child of node.children) div.appendChild(renderNode(child, depth + 1, reload));
-    return div;
+    return wrap;
 }
 
 export function renderArticle(aid) {
+    showNav("/");
+
     document.getElementById("app").innerHTML = `
-        <a href="/" data-link>← ホームに戻る</a>
-        <hr>
-        <div id="thread"></div>
+        <div class="tw-header">
+            <a class="tw-header-icon-btn" href="/" data-link title="戻る">←</a>
+            <span class="tw-header-title">スレッド</span>
+        </div>
+        <div class="tw-page" id="thread"></div>
     `;
 
     async function load() {
-        const res = await fetch(`/articles/${aid}/thread`);
-        if (res.status === 401) { navigate("/sign"); return; }
-        if (res.status === 404) { document.getElementById("thread").textContent = "投稿が見つかりません"; return; }
-        const { articles, root_aid } = await res.json();
+        const [threadRes] = await Promise.all([
+            fetch(`/articles/${aid}/thread`),
+            fetch(`/articles/${aid}`),  // view_count increment (fire-and-forget)
+        ]);
+        if (threadRes.status === 401) { navigate("/sign"); return; }
         const container = document.getElementById("thread");
+        if (threadRes.status === 404) { container.innerHTML = '<p class="tw-empty">投稿が見つかりません</p>'; return; }
+        const { articles, root_aid } = await threadRes.json();
         container.innerHTML = "";
         const root = buildTree(articles, root_aid);
         if (root) container.appendChild(renderNode(root, 0, load));

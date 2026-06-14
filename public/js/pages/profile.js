@@ -1,58 +1,77 @@
 import { navigate } from "../router.js";
+import { showNav } from "../nav.js";
 
 export function renderProfile() {
+    showNav("/profile");
+
     document.getElementById("app").innerHTML = `
-        <h1>プロフィール設定</h1>
-        <a href="/" data-link>← ホームに戻る</a>
-        <hr>
-        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
-            <div id="iconWrap" style="position:relative;width:80px;height:80px">
-                <div id="iconPlaceholder" style="width:80px;height:80px;border-radius:50%;background:#bbb;display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;font-weight:bold">?</div>
-                <img id="iconImg" src="" alt="アイコン" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:none">
-            </div>
-            <div>
-                <label style="cursor:pointer">
-                    <input type="file" id="iconFile" accept="image/jpeg,image/png,image/webp" style="display:none">
-                    <button type="button" id="iconPickBtn">アイコン画像を選択</button>
-                </label>
-                <button id="iconUploadBtn" style="display:none;margin-left:8px">アップロード</button>
-                <p id="iconStatus" style="margin:4px 0;font-size:0.85em"></p>
-            </div>
+        <div class="tw-header">
+            <span class="tw-header-logo">設定</span>
+            <button class="tw-logout-btn" id="logoutBtn">ログアウト</button>
         </div>
-        <hr>
-        <p>レベル: <strong id="level">-</strong> &nbsp; <span id="exp_to_next" style="color:#888;font-size:0.9em"></span></p>
-        <p><label>ユーザーID (@): <input id="uid" type="text"></label></p>
-        <p><label>表示名: <input id="name" type="text"></label></p>
-        <p><label>メールアドレス: <input id="email" type="email"></label></p>
-        <button id="saveBtn">保存</button>
-        <p id="status"></p>
-        <hr>
-        <h2>フォロー中</h2>
-        <div id="followingList"></div>
+        <div class="tw-page">
+
+            <div class="tw-settings-sec">
+                <p class="tw-settings-ttl">アイコン</p>
+                <div class="tw-icon-row">
+                    <div id="iconWrap">
+                        <div id="iconPlaceholder" class="tw-profile-avatar-ph" style="width:64px;height:64px;font-size:22px">?</div>
+                        <img id="iconImg" src="" alt="" class="tw-profile-avatar" style="width:64px;height:64px;display:none">
+                    </div>
+                    <div>
+                        <label>
+                            <input type="file" id="iconFile" accept="image/jpeg,image/png,image/webp" style="display:none">
+                            <button type="button" class="tw-icon-pick-btn" id="iconPickBtn">画像を選択</button>
+                        </label>
+                        <button class="tw-icon-pick-btn" id="iconUploadBtn" style="display:none;margin-left:8px;background:var(--blue);color:#fff;border-color:var(--blue)">アップロード</button>
+                        <p class="tw-settings-status" id="iconStatus"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tw-settings-sec">
+                <p class="tw-settings-ttl">プロフィール</p>
+                <div id="levelWrap" style="margin-bottom:14px"></div>
+                <div class="tw-field-set">
+                    <label>ユーザーID (@)</label>
+                    <input id="uid" type="text" class="tw-settings-input">
+                </div>
+                <div class="tw-field-set">
+                    <label>表示名</label>
+                    <input id="name" type="text" class="tw-settings-input">
+                </div>
+                <div class="tw-field-set">
+                    <label>メールアドレス</label>
+                    <input id="email" type="email" class="tw-settings-input">
+                </div>
+                <button class="tw-save-btn" id="saveBtn">保存する</button>
+                <p class="tw-settings-status" id="saveStatus"></p>
+            </div>
+
+            <div class="tw-settings-sec">
+                <p class="tw-settings-ttl">フォロー中</p>
+                <div id="followingList"></div>
+            </div>
+
+        </div>
     `;
 
-    const statusEl = document.getElementById("status");
+    const saveStatus = document.getElementById("saveStatus");
 
-    function showStatus(msg, color) {
-        statusEl.textContent = msg;
-        statusEl.style.color = color;
-        statusEl.style.fontWeight = color === "green" ? "bold" : "";
-        if (color === "green") {
-            setTimeout(() => { statusEl.textContent = ""; statusEl.style.cssText = ""; }, 3000);
-        }
+    function showSaveStatus(msg, color) {
+        saveStatus.textContent = msg;
+        saveStatus.style.color = color;
+        if (color === "green") setTimeout(() => { saveStatus.textContent = ""; }, 3000);
     }
 
     function setIcon(url, name) {
-        const img = document.getElementById("iconImg");
-        const placeholder = document.getElementById("iconPlaceholder");
+        const img  = document.getElementById("iconImg");
+        const ph   = document.getElementById("iconPlaceholder");
         if (url) {
-            img.src = url;
-            img.style.display = "";
-            placeholder.style.display = "none";
+            img.src = url; img.style.display = ""; ph.style.display = "none";
         } else {
-            img.style.display = "none";
-            placeholder.style.display = "flex";
-            placeholder.textContent = (name ?? "?").charAt(0).toUpperCase();
+            img.style.display = "none"; ph.style.display = "flex";
+            ph.textContent = (name ?? "?").charAt(0).toUpperCase();
         }
     }
 
@@ -63,31 +82,39 @@ export function renderProfile() {
         document.getElementById("uid").value   = user.uid   ?? "";
         document.getElementById("name").value  = user.name  ?? "";
         document.getElementById("email").value = user.email ?? "";
-        document.getElementById("level").textContent     = `Lv.${user.level}`;
-        document.getElementById("exp_to_next").textContent = `次のレベルまで ${user.exp_to_next} exp`;
+
+        const levelWrap = document.getElementById("levelWrap");
+        levelWrap.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+                <span class="tw-level-pill" style="margin-bottom:0">
+                    レベル <strong>Lv.${user.level}</strong>
+                    <span style="color:var(--text2)">次まで ${user.exp_to_next} exp</span>
+                </span>
+                <a href="/user/${encodeURIComponent(user.uid)}" data-link
+                   style="font-size:0.85em;color:var(--blue);text-decoration:none">
+                    自分のページを見る →
+                </a>
+            </div>
+        `;
         setIcon(user.icon_url, user.name);
         await loadFollowing(user.uid);
     }
 
-    const iconFile = document.getElementById("iconFile");
-    const iconPickBtn = document.getElementById("iconPickBtn");
+    const iconFile      = document.getElementById("iconFile");
+    const iconPickBtn   = document.getElementById("iconPickBtn");
     const iconUploadBtn = document.getElementById("iconUploadBtn");
-    const iconStatus = document.getElementById("iconStatus");
+    const iconStatus    = document.getElementById("iconStatus");
 
     iconPickBtn.addEventListener("click", () => iconFile.click());
-
     iconFile.addEventListener("change", () => {
-        if (iconFile.files.length === 0) return;
-        const file = iconFile.files[0];
-        const previewUrl = URL.createObjectURL(file);
-        setIcon(previewUrl, null);
+        if (!iconFile.files.length) return;
+        setIcon(URL.createObjectURL(iconFile.files[0]), null);
         iconUploadBtn.style.display = "";
-        iconStatus.textContent = `${file.name} を選択中`;
-        iconStatus.style.color = "#555";
+        iconStatus.textContent = iconFile.files[0].name;
+        iconStatus.style.color = "var(--text2)";
     });
-
     iconUploadBtn.addEventListener("click", async () => {
-        if (iconFile.files.length === 0) return;
+        if (!iconFile.files.length) return;
         iconUploadBtn.disabled = true;
         iconStatus.textContent = "アップロード中…";
         const form = new FormData();
@@ -105,7 +132,7 @@ export function renderProfile() {
         } else {
             const err = await r.json();
             iconStatus.textContent = "エラー: " + (err.error || r.status);
-            iconStatus.style.color = "red";
+            iconStatus.style.color = "var(--danger)";
         }
     });
 
@@ -114,23 +141,25 @@ export function renderProfile() {
         const list = await res.json();
         const container = document.getElementById("followingList");
         container.innerHTML = "";
-        if (list.length === 0) { container.textContent = "フォロー中のユーザーはいません"; return; }
+        if (!list.length) {
+            container.innerHTML = '<p class="tw-empty" style="padding:16px 0">フォロー中のユーザーはいません</p>';
+            return;
+        }
         for (const u of list) {
-            const div = document.createElement("div");
-            div.style.cssText = "padding:6px 0;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px";
-            const link = document.createElement("a");
-            link.href = `/user/${encodeURIComponent(u.uid)}`;
-            link.setAttribute("data-link", "");
-            link.textContent = `${u.name} @${u.uid}`;
-            const unfollowBtn = document.createElement("button");
-            unfollowBtn.textContent = "フォロー解除";
-            unfollowBtn.addEventListener("click", async () => {
+            const item = document.createElement("div");
+            item.className = "tw-follow-item";
+            item.innerHTML = `
+                <div class="tw-follow-info">
+                    <a class="tw-follow-link" href="/user/${encodeURIComponent(u.uid)}" data-link>${u.name}</a>
+                    <span class="tw-follow-uid-text">@${u.uid}</span>
+                </div>
+                <button class="tw-unfollow-btn">フォロー解除</button>
+            `;
+            item.querySelector(".tw-unfollow-btn").addEventListener("click", async () => {
                 const r = await fetch(`/follows/${encodeURIComponent(u.uid)}`, { method: "DELETE" });
-                if (r.ok) div.remove();
+                if (r.ok) item.remove();
             });
-            div.appendChild(link);
-            div.appendChild(unfollowBtn);
-            container.appendChild(div);
+            container.appendChild(item);
         }
     }
 
@@ -138,18 +167,23 @@ export function renderProfile() {
         const uid   = document.getElementById("uid").value.trim();
         const name  = document.getElementById("name").value.trim();
         const email = document.getElementById("email").value.trim();
-        if (!uid)   { showStatus("ユーザーIDを入力してください", "red"); return; }
-        if (!name)  { showStatus("表示名を入力してください", "red"); return; }
-        if (!email) { showStatus("メールアドレスを入力してください", "red"); return; }
+        if (!uid)   { showSaveStatus("ユーザーIDを入力してください", "var(--danger)"); return; }
+        if (!name)  { showSaveStatus("表示名を入力してください", "var(--danger)"); return; }
+        if (!email) { showSaveStatus("メールアドレスを入力してください", "var(--danger)"); return; }
         const res = await fetch("/users/me", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ uid, name, email })
         });
-        if (res.ok) { showStatus("保存しました！", "green"); await loadProfile(); }
-        else { const err = await res.json(); showStatus("エラー: " + (err.error || res.status), "red"); }
+        if (res.ok) { showSaveStatus("保存しました！", "green"); await loadProfile(); }
+        else { const err = await res.json(); showSaveStatus("エラー: " + (err.error || res.status), "var(--danger)"); }
     }
 
     document.getElementById("saveBtn").addEventListener("click", save);
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+        await fetch("/logout", { method: "POST" });
+        navigate("/sign");
+    });
+
     loadProfile();
 }

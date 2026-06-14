@@ -1,79 +1,68 @@
 import { navigate } from "../router.js";
 import { renderCard } from "../renderUtils.js";
+import { showNav } from "../nav.js";
 
 export function renderSearch() {
-    const params = new URLSearchParams(location.search);
-    const q = params.get("q") ?? "";
+    showNav("/search");
+
+    const params     = new URLSearchParams(location.search);
+    const q          = params.get("q") ?? "";
     const initialCid = params.get("cid") ? parseInt(params.get("cid")) : null;
 
     document.getElementById("app").innerHTML = `
-        <a href="/" data-link>← ホームに戻る</a>
-        <hr>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input id="searchInput" type="text" placeholder="キーワード・ユーザー名…" style="flex:1;min-width:120px;padding:6px;font-size:1em" value="${q.replace(/"/g, '&quot;')}">
-            <select id="categorySelect" style="padding:6px;font-size:1em">
-                <option value="">カテゴリ（すべて）</option>
-            </select>
-            <button id="searchBtn">検索</button>
+        <div class="tw-search-head">
+            <a class="tw-header-icon-btn" href="/" data-link title="戻る">←</a>
+            <div class="tw-search-wrap">
+                <input class="tw-search-input" id="searchInput" type="text"
+                    placeholder="キーワード・ユーザー名…"
+                    value="${q.replace(/"/g, '&quot;')}">
+            </div>
         </div>
-        <p id="searchLabel" style="color:#888;font-size:0.9em;margin:6px 0"></p>
-        <div id="results"></div>
-        <button id="moreBtn" style="display:none;margin-top:8px">もっと見る</button>
+        <div class="tw-chips" id="chipRow"></div>
+        <p class="tw-search-label" id="searchLabel"></p>
+        <div class="tw-page" id="results"></div>
+        <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
     `;
 
     let nextOffset = null;
-    let currentQ = q;
     let currentCid = initialCid;
-
     const searchInput = document.getElementById("searchInput");
-    const categorySelect = document.getElementById("categorySelect");
-    const searchLabel = document.getElementById("searchLabel");
 
     async function loadCategories() {
         const res = await fetch("/categories");
         if (!res.ok) return;
         const { categories } = await res.json();
+        const row = document.getElementById("chipRow");
         for (const c of categories) {
-            const opt = document.createElement("option");
-            opt.value = c.cid;
-            opt.textContent = c.name;
-            if (c.cid === initialCid) opt.selected = true;
-            categorySelect.appendChild(opt);
+            const btn = document.createElement("button");
+            btn.className = "tw-chip" + (c.cid === initialCid ? " active" : "");
+            btn.textContent = c.name;
+            btn.dataset.cid = c.cid;
+            btn.addEventListener("click", () => {
+                currentCid = currentCid === c.cid ? null : c.cid;
+                row.querySelectorAll(".tw-chip").forEach(b => b.classList.toggle("active", b.dataset.cid == currentCid));
+                search(0, false);
+            });
+            row.appendChild(btn);
         }
-    }
-
-    function renderArticle(a) {
-        const card = renderCard(a);
-        const replyCount = document.createElement("span");
-        replyCount.textContent = `💬 ${a.reply_count}`;
-        replyCount.style.cssText = "font-size:0.85em;color:#888;margin-left:8px";
-        const detailLink = document.createElement("a");
-        detailLink.href = `/article/${a.aid}`;
-        detailLink.setAttribute("data-link", "");
-        detailLink.textContent = "詳細";
-        detailLink.style.cssText = "font-size:0.85em;margin-left:8px";
-        card.appendChild(replyCount);
-        card.appendChild(detailLink);
-        return card;
     }
 
     async function search(offset = 0, append = false) {
         const query = searchInput.value.trim();
-        const cid = categorySelect.value ? parseInt(categorySelect.value) : null;
-
-        if (!query && !cid) return;
-
-        currentQ = query;
-        currentCid = cid;
+        if (!query && !currentCid) {
+            document.getElementById("results").innerHTML = "";
+            document.getElementById("searchLabel").textContent = "";
+            return;
+        }
 
         const urlParams = new URLSearchParams();
         if (query) urlParams.set("q", query);
-        if (cid) urlParams.set("cid", cid);
+        if (currentCid) urlParams.set("cid", currentCid);
         history.replaceState({}, "", `/search?${urlParams}`);
 
         const apiParams = new URLSearchParams({ offset, limit: 20 });
         if (query) apiParams.set("q", query);
-        if (cid) apiParams.set("cid", cid);
+        if (currentCid) apiParams.set("cid", currentCid);
 
         const res = await fetch(`/articles/search?${apiParams}`);
         if (res.status === 401) { navigate("/sign"); return; }
@@ -82,27 +71,26 @@ export function renderSearch() {
         const container = document.getElementById("results");
         if (!append) container.innerHTML = "";
 
-        const labelParts = [];
-        if (query) labelParts.push(`「${query}」`);
-        if (cid) {
-            const opt = categorySelect.options[categorySelect.selectedIndex];
-            labelParts.push(`カテゴリ: ${opt.textContent}`);
+        const parts = [];
+        if (query) parts.push(`「${query}」`);
+        if (currentCid) {
+            const activeChip = document.querySelector(`.tw-chip[data-cid="${currentCid}"]`);
+            if (activeChip) parts.push(activeChip.textContent);
         }
-        searchLabel.textContent = labelParts.length ? `${labelParts.join(" / ")} の検索結果` : "";
+        document.getElementById("searchLabel").textContent =
+            parts.length ? `${parts.join(" · ")} の検索結果` : "";
 
-        if (data.articles.length === 0 && !append) {
-            container.textContent = "該当する投稿がありませんでした";
+        if (!data.articles.length && !append) {
+            container.innerHTML = '<p class="tw-empty">該当する投稿がありませんでした</p>';
         } else {
-            data.articles.forEach(a => container.appendChild(renderArticle(a)));
+            data.articles.forEach(a => container.appendChild(renderCard(a)));
         }
 
         nextOffset = data.next_offset;
-        document.getElementById("moreBtn").style.display = nextOffset !== null ? "inline" : "none";
+        document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
     }
 
-    document.getElementById("searchBtn").addEventListener("click", () => search(0, false));
     searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") search(0, false); });
-    categorySelect.addEventListener("change", () => search(0, false));
     document.getElementById("moreBtn").addEventListener("click", () => search(nextOffset, true));
 
     loadCategories().then(() => {

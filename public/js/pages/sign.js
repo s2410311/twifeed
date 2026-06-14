@@ -1,4 +1,5 @@
 import { navigate } from "../router.js";
+import { hideNav } from "../nav.js";
 
 function bufferToBase64url(buffer) {
     return btoa(String.fromCharCode(...new Uint8Array(buffer)))
@@ -18,16 +19,31 @@ function generateUid() {
 }
 
 export function renderSign() {
+    hideNav();
+
     document.getElementById("app").innerHTML = `
-        <h1>twifeed</h1>
-        <h2>新規登録</h2>
-        <p><label>表示名: <input id="regName" type="text" placeholder="例: 山田太郎"></label></p>
-        <p><label>メールアドレス: <input id="regEmail" type="email" placeholder="例: taro@example.com"></label></p>
-        <button id="registerBtn">登録（Passkey）</button>
-        <hr>
-        <h2>ログイン</h2>
-        <button id="loginBtn">ログイン（Passkey）</button>
-        <pre id="log"></pre>
+        <div class="tw-sign">
+            <div class="tw-sign-logo">TwiFeed</div>
+
+            <h2 class="tw-sign-heading">はじめる</h2>
+            <div class="tw-sign-form">
+                <div class="tw-field">
+                    <label>表示名</label>
+                    <input id="regName" type="text" placeholder="例: 山田太郎">
+                </div>
+                <div class="tw-field">
+                    <label>メールアドレス</label>
+                    <input id="regEmail" type="email" placeholder="例: taro@example.com">
+                </div>
+                <button class="tw-sign-btn" id="registerBtn">登録する (Passkey)</button>
+            </div>
+
+            <div class="tw-sign-divider" style="margin-top:24px;margin-bottom:16px;width:100%">すでにアカウントをお持ちの方</div>
+
+            <button class="tw-sign-btn outline" id="loginBtn" style="width:100%">ログイン (Passkey)</button>
+
+            <pre class="tw-sign-log" id="log"></pre>
+        </div>
     `;
 
     function log(msg) {
@@ -40,7 +56,7 @@ export function renderSign() {
         if (!name)  { log("表示名を入力してください"); return; }
         if (!email) { log("メールアドレスを入力してください"); return; }
         const uid = generateUid();
-        log(`登録開始（UID: ${uid}）`);
+        log("登録中…");
         try {
             const optRes = await fetch("/register/options", {
                 method: "POST",
@@ -77,7 +93,7 @@ export function renderSign() {
     }
 
     async function login() {
-        log("ログイン開始");
+        log("ログイン中…");
         try {
             const optRes = await fetch("/auth/options", {
                 method: "POST",

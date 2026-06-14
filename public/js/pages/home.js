@@ -1,150 +1,92 @@
 import { navigate } from "../router.js";
-import { escapeHtml, formatDate, linkifyTags, toggleLike } from "../renderUtils.js";
+import { renderCard } from "../renderUtils.js";
+import { showNav } from "../nav.js";
 
 let activeEventSource = null;
 
-function buildCard(a) {
-    const card = document.createElement("div");
-    card.className = "post-card";
-
-    const quote = (a.parent_aid && a.parent_name) ? `
-        <div class="quote-card">
-            <strong>${escapeHtml(a.parent_name)}</strong>
-            <span class="post-user-id">@${escapeHtml(a.parent_uid ?? "")}</span>
-            <p>${escapeHtml((a.parent_content ?? "").slice(0, 100))}${(a.parent_content ?? "").length > 100 ? "…" : ""}</p>
-        </div>` : "";
-
-    const avatarEl = a.icon_url
-        ? `<a href="/user/${encodeURIComponent(a.uid)}" data-link><img class="avatar" src="${escapeHtml(a.icon_url)}" alt=""></a>`
-        : `<a class="avatar-ph" href="/user/${encodeURIComponent(a.uid)}" data-link>${escapeHtml(a.name.charAt(0).toUpperCase())}</a>`;
-
-    const liked = !!a.liked;
-    card.innerHTML = `
-        ${quote}
-        <div class="post-card-top">
-            ${avatarEl}
-            <div class="post-user-info">
-                <a class="post-user-name" href="/user/${encodeURIComponent(a.uid)}" data-link>${escapeHtml(a.name)}</a>
-                <span class="post-user-id">@${escapeHtml(a.uid)}</span>
-                <span class="post-date">${formatDate(a.created_at)}</span>
-            </div>
-            <button class="like-btn${liked ? " liked" : ""}" data-aid="${a.aid}" data-liked="${liked ? "1" : "0"}">${liked ? "♥" : "♡"} ${a.like_count}</button>
-        </div>
-        <p class="post-content">${linkifyTags(a.content)}</p>
-        <div class="post-footer">
-            <span>💬 ${a.reply_count}</span>
-            ${a.category_name ? `<span class="category-badge">${escapeHtml(a.category_name)}</span>` : ""}
-            <a href="/article/${a.aid}" data-link>詳細</a>
-        </div>
-    `;
-
-    card.querySelector(".like-btn").addEventListener("click", (e) => toggleLike(e.currentTarget));
-
-    if (a.images?.length > 0) {
-        const grid = document.createElement("div");
-        const n = Math.min(a.images.length, 4);
-        grid.className = `post-images cols-${n}`;
-        a.images.slice(0, 4).forEach(img => {
-            const el = document.createElement("img");
-            el.src = img.thumbnail_url;
-            el.alt = "";
-            el.addEventListener("click", () => window.open(img.url, "_blank"));
-            grid.appendChild(el);
-        });
-        card.querySelector(".post-footer").insertAdjacentElement("beforebegin", grid);
-    }
-
-    return card;
-}
-
 export function renderHome() {
+    showNav("/");
     if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
 
     document.getElementById("app").innerHTML = `
-        <div class="home-header">TwiFeed</div>
-        <div class="search-wrap">
-            <input id="searchInput" type="text" placeholder="キーワードを入力…">
+        <div class="tw-header">
+            <span class="tw-header-logo">TwiFeed</span>
+            <div class="tw-search-wrap" style="max-width:220px">
+                <input class="tw-search-input" id="searchInput" type="text" placeholder="検索…">
+            </div>
+            <button class="tw-header-icon-btn" id="searchBtn" title="検索">🔍</button>
         </div>
-        <div class="chip-row" id="chipRow"></div>
-        <div class="feed" id="timeline"></div>
-        <button class="more-btn" id="moreBtn" style="display:none">もっと見る</button>
-        <button class="fab" id="fabBtn" title="投稿">＋</button>
+        <div class="tw-tabs">
+            <button class="tw-tab active" id="tabFollowing">フォロー中</button>
+            <button class="tw-tab"        id="tabAll">全体</button>
+        </div>
+        <div class="tw-chips" id="chipRow" style="display:none"></div>
+        <div class="tw-page" id="timeline"></div>
+        <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
+        <button class="tw-fab" id="fabBtn" title="投稿">✏️</button>
 
-        <div class="post-overlay" id="postOverlay" style="display:none">
-            <div class="post-sheet">
-                <div class="post-sheet-header">
-                    <h3>新しい投稿</h3>
-                    <div style="display:flex;gap:8px">
-                        <button id="cancelPostBtn">キャンセル</button>
-                        <button id="submitPostBtn">投稿</button>
+        <div class="tw-overlay" id="overlay" style="display:none">
+            <div class="tw-modal">
+                <div class="tw-modal-head">
+                    <button class="tw-modal-close" id="closeBtn">✕</button>
+                    <button class="tw-post-btn"   id="submitBtn">投稿する</button>
+                </div>
+                <div class="tw-modal-body">
+                    <div class="tw-card-av">
+                        <span class="tw-avatar-ph" id="myAvatar">?</span>
+                    </div>
+                    <div class="tw-compose-right">
+                        <textarea class="tw-compose-ta" id="postContent" rows="4" placeholder="いまなにしてる？"></textarea>
+                        <div class="tw-compose-previews" id="imagePreviews"></div>
                     </div>
                 </div>
-                <textarea id="postContent" rows="4" placeholder="いまなにしてる？"></textarea>
-                <select id="categorySelect">
-                    <option value="">カテゴリを選択（任意）</option>
-                </select>
-                <input id="imageInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-                <div id="imagePreviews"></div>
-                <p id="postStatus"></p>
+                <p class="tw-post-status" id="postStatus"></p>
+                <div class="tw-modal-foot">
+                    <div class="tw-modal-tools">
+                        <label class="tw-img-label" title="画像を追加">
+                            🖼
+                            <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp" multiple style="display:none">
+                        </label>
+                        <select class="tw-cat-select" id="categorySelect">
+                            <option value="">カテゴリ</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
     `;
 
     let nextOffset = null;
-    let activeCid = null;
-    let activeTab = "following";
+    let activeCid  = null;
+    let activeTab  = "following";
+    let categories = [];
 
-    // ── Chips ──
-    function buildChips(categories) {
+    // ── Categories ──
+    async function loadCategories() {
+        const res = await fetch("/categories");
+        if (!res.ok) return;
+        const data = await res.json();
+        categories = data.categories;
+
+        const sel = document.getElementById("categorySelect");
         const row = document.getElementById("chipRow");
-        row.innerHTML = "";
+        for (const c of categories) {
+            const opt = document.createElement("option");
+            opt.value = c.cid;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
 
-        const tabs = [
-            { label: "フォロー中", key: "following" },
-            { label: "全体", key: "all" },
-        ];
-        tabs.forEach(({ label, key }) => {
             const btn = document.createElement("button");
-            btn.className = "chip" + (activeTab === key ? " active" : "");
-            btn.textContent = label;
-            btn.addEventListener("click", () => setTab(key));
-            row.appendChild(btn);
-        });
-
-        const sep = document.createElement("span");
-        sep.style.cssText = "width:1px;background:#ddd;flex-shrink:0;align-self:stretch;margin:4px 0";
-        row.appendChild(sep);
-
-        categories.forEach(c => {
-            const btn = document.createElement("button");
-            btn.className = "chip" + (activeCid === c.cid ? " active" : "");
+            btn.className = "tw-chip";
             btn.textContent = c.name;
             btn.dataset.cid = c.cid;
-            btn.style.display = activeTab === "all" ? "" : "none";
             btn.addEventListener("click", () => {
                 activeCid = activeCid === c.cid ? null : c.cid;
-                buildChips(categories);
+                row.querySelectorAll(".tw-chip").forEach(b => b.classList.toggle("active", b.dataset.cid == activeCid));
                 loadTimeline(0, false);
             });
             row.appendChild(btn);
-        });
-    }
-
-    function setTab(tab) {
-        activeTab = tab;
-        activeCid = null;
-        const chips = document.querySelectorAll("#chipRow .chip");
-        chips.forEach(c => {
-            if (c.dataset.cid) {
-                c.style.display = tab === "all" ? "" : "none";
-                c.classList.remove("active");
-            } else {
-                const isActive = (tab === "following" && c.textContent === "フォロー中") ||
-                                 (tab === "all" && c.textContent === "全体");
-                c.classList.toggle("active", isActive);
-            }
-        });
-        loadTimeline(0, false);
+        }
     }
 
     // ── Timeline ──
@@ -161,18 +103,30 @@ export function renderHome() {
         const container = document.getElementById("timeline");
         if (!append) container.innerHTML = "";
         if (data.articles.length === 0 && !append) {
-            container.innerHTML = '<p class="feed-empty">投稿がありません</p>';
+            container.innerHTML = '<p class="tw-empty">投稿がありません</p>';
         } else {
-            data.articles.forEach(a => container.appendChild(buildCard(a)));
+            data.articles.forEach(a => container.appendChild(renderCard(a)));
         }
         nextOffset = data.next_offset;
         document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
     }
 
-    // ── Post ──
-    function openModal() { document.getElementById("postOverlay").style.display = "flex"; }
+    // ── Tabs ──
+    function setTab(tab) {
+        activeTab = tab;
+        activeCid = null;
+        document.getElementById("tabFollowing").classList.toggle("active", tab === "following");
+        document.getElementById("tabAll").classList.toggle("active", tab === "all");
+        const row = document.getElementById("chipRow");
+        row.style.display = tab === "all" ? "flex" : "none";
+        row.querySelectorAll(".tw-chip").forEach(b => b.classList.remove("active"));
+        loadTimeline(0, false);
+    }
+
+    // ── Compose ──
+    function openModal() { document.getElementById("overlay").style.display = "flex"; }
     function closeModal() {
-        document.getElementById("postOverlay").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
         document.getElementById("postStatus").textContent = "";
     }
 
@@ -187,16 +141,15 @@ export function renderHome() {
 
     async function post() {
         const content = document.getElementById("postContent").value.trim();
-        const status = document.getElementById("postStatus");
-        const files = Array.from(document.getElementById("imageInput").files).slice(0, 4);
-        const cidVal = document.getElementById("categorySelect").value;
-        const cid = cidVal ? parseInt(cidVal) : null;
-
-        if (!content) { status.textContent = "内容を入力してください"; status.style.color = "red"; return; }
+        const status  = document.getElementById("postStatus");
+        const files   = Array.from(document.getElementById("imageInput").files).slice(0, 4);
+        const cidVal  = document.getElementById("categorySelect").value;
+        const cid     = cidVal ? parseInt(cidVal) : null;
+        if (!content) { status.textContent = "内容を入力してください"; return; }
 
         let image_ids = [];
         try { image_ids = await uploadImages(files); }
-        catch (e) { status.textContent = e.message; status.style.color = "red"; return; }
+        catch (e) { status.textContent = e.message; return; }
 
         const res = await fetch("/articles", {
             method: "POST",
@@ -210,20 +163,31 @@ export function renderHome() {
             document.getElementById("imageInput").value = "";
             document.getElementById("imagePreviews").innerHTML = "";
             closeModal();
-            await loadTimeline(0, false);
+            loadTimeline(0, false);
         } else {
             const err = await res.json();
             status.textContent = "投稿失敗: " + (err.error || res.status);
-            status.style.color = "red";
         }
     }
 
-    // ── Search ──
-    document.getElementById("searchInput").addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            const q = e.currentTarget.value.trim();
-            if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-        }
+    // ── SSE ──
+    function prependCard(a) {
+        const container = document.getElementById("timeline");
+        if (!container) return;
+        const empty = container.querySelector(".tw-empty");
+        if (empty) container.innerHTML = "";
+        container.prepend(renderCard(a));
+    }
+    activeEventSource = new EventSource("/stream");
+    activeEventSource.addEventListener("following_article", (e) => {
+        if (activeTab !== "following") return;
+        prependCard(JSON.parse(e.data));
+    });
+    activeEventSource.addEventListener("global_article", (e) => {
+        if (activeTab !== "all") return;
+        const a = JSON.parse(e.data);
+        if (activeCid && a.cid !== activeCid) return;
+        prependCard(a);
     });
 
     // ── Image preview ──
@@ -237,54 +201,40 @@ export function renderHome() {
         });
     });
 
-    // ── SSE ──
-    function prependCard(a) {
-        const container = document.getElementById("timeline");
-        if (!container) return;
-        const empty = container.querySelector(".feed-empty");
-        if (empty) container.innerHTML = "";
-        container.prepend(buildCard(a));
+    // ── Events ──
+    function goSearch() {
+        const q = document.getElementById("searchInput").value.trim();
+        navigate(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
     }
+    document.getElementById("searchInput").addEventListener("keydown", (e) => { if (e.key === "Enter") goSearch(); });
+    document.getElementById("searchBtn").addEventListener("click", goSearch);
 
-    activeEventSource = new EventSource("/stream");
-    activeEventSource.addEventListener("following_article", (e) => {
-        if (activeTab !== "following") return;
-        prependCard(JSON.parse(e.data));
-    });
-    activeEventSource.addEventListener("global_article", (e) => {
-        if (activeTab !== "all") return;
-        const article = JSON.parse(e.data);
-        if (activeCid && article.cid !== activeCid) return;
-        prependCard(article);
-    });
-
-    // ── Event listeners ──
+    document.getElementById("tabFollowing").addEventListener("click", () => setTab("following"));
+    document.getElementById("tabAll").addEventListener("click", () => setTab("all"));
     document.getElementById("fabBtn").addEventListener("click", openModal);
-    document.getElementById("cancelPostBtn").addEventListener("click", closeModal);
-    document.getElementById("submitPostBtn").addEventListener("click", post);
+    document.getElementById("closeBtn").addEventListener("click", closeModal);
+    document.getElementById("submitBtn").addEventListener("click", post);
+    document.getElementById("overlay").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeModal(); });
     document.getElementById("moreBtn").addEventListener("click", () => loadTimeline(nextOffset, true));
-    document.getElementById("postOverlay").addEventListener("click", (e) => {
-        if (e.target === e.currentTarget) closeModal();
-    });
 
     // ── Init ──
     async function init() {
-        const res = await fetch("/categories");
-        let categories = [];
-        if (res.ok) {
-            const data = await res.json();
-            categories = data.categories;
-            const sel = document.getElementById("categorySelect");
-            for (const c of categories) {
-                const opt = document.createElement("option");
-                opt.value = c.cid;
-                opt.textContent = c.name;
-                sel.appendChild(opt);
+        await loadCategories();
+        // Load my avatar for compose
+        const meRes = await fetch("/users/me");
+        if (meRes.ok) {
+            const me = await meRes.json();
+            const av = document.getElementById("myAvatar");
+            if (me.icon_url && av) {
+                const img = document.createElement("img");
+                img.className = "tw-avatar";
+                img.src = me.icon_url;
+                av.replaceWith(img);
+            } else if (av) {
+                av.textContent = (me.name ?? "?").charAt(0).toUpperCase();
             }
         }
-        buildChips(categories);
         loadTimeline(0, false);
     }
-
     init();
 }

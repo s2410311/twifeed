@@ -1,126 +1,176 @@
 import { navigate } from "../router.js";
-import { renderCard } from "../renderUtils.js";
+import { renderCard, escapeHtml } from "../renderUtils.js";
+import { showNav } from "../nav.js";
 
 export function renderUser(uid) {
+    showNav("/");
+
     document.getElementById("app").innerHTML = `
-        <a href="/" data-link>← ホームに戻る</a>
-        <hr>
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px">
-            <div id="userIconWrap"></div>
-            <div>
-                <h1 id="userName" style="margin:0"></h1>
-                <p id="userUid" style="color:#888;margin:2px 0"></p>
-                <p id="userStats" style="margin:2px 0;font-size:0.9em;color:#555"></p>
-            </div>
+        <div class="tw-header">
+            <a class="tw-header-icon-btn" href="/" data-link title="戻る">←</a>
+            <span class="tw-header-title" id="headerName">ユーザー</span>
         </div>
-        <button id="followBtn" style="display:none"></button>
-        <hr>
-        <h2 style="margin:8px 0">投稿</h2>
-        <div id="articles"></div>
-        <button id="moreBtn" style="display:none;margin-top:8px">もっと見る</button>
+        <div class="tw-banner"></div>
+        <div class="tw-profile-av-row">
+            <div id="avatarWrap"></div>
+            <button class="tw-follow-btn" id="followBtn" style="display:none"></button>
+        </div>
+        <div class="tw-profile-info" id="profileInfo">
+            <p class="tw-profile-name" id="profileName"></p>
+            <p class="tw-profile-uid"  id="profileUid"></p>
+            <div class="tw-profile-stats" id="profileStats"></div>
+        </div>
+        <div id="userListWrap"></div>
+        <div class="tw-tabs" id="postTabs" style="display:none">
+            <button class="tw-tab active" id="tabPosts">投稿</button>
+            <button class="tw-tab"        id="tabFollowers">フォロワー</button>
+            <button class="tw-tab"        id="tabFollowing">フォロー中</button>
+        </div>
+        <div class="tw-page" id="posts"></div>
+        <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
     `;
 
     let nextOffset = null;
     let myUid = null;
+    let activeList = "posts";
+    let followerCount = 0;
 
-    function renderArticle(a) {
-        const card = renderCard(a, { showQuote: true });
-        const replyCount = document.createElement("span");
-        replyCount.textContent = `💬 ${a.reply_count}`;
-        replyCount.style.cssText = "font-size:0.85em;color:#888;margin-left:8px";
-        const detailLink = document.createElement("a");
-        detailLink.href = `/article/${a.aid}`;
-        detailLink.setAttribute("data-link", "");
-        detailLink.textContent = "詳細";
-        detailLink.style.cssText = "font-size:0.85em;margin-left:8px";
-        card.appendChild(replyCount);
-        card.appendChild(detailLink);
-        return card;
-    }
-
-    async function loadArticles(offset = 0, append = false) {
+    async function loadPosts(offset = 0, append = false) {
         const res = await fetch(`/users/${encodeURIComponent(uid)}?offset=${offset}&limit=20`);
         if (res.status === 401) { navigate("/sign"); return; }
         if (res.status === 404) {
-            document.getElementById("userName").textContent = "ユーザーが見つかりません";
+            document.getElementById("profileName").textContent = "ユーザーが見つかりません";
             return;
         }
         const { user, articles, next_offset } = await res.json();
+        followerCount = user.follower_count;
 
         if (!append) {
-            document.title = `${user.name} - twifeed`;
-            document.getElementById("userName").textContent = user.name;
-            document.getElementById("userUid").textContent = `@${user.uid}`;
-            document.getElementById("userStats").textContent =
-                `フォロワー ${user.follower_count}　フォロー中 ${user.following_count}`;
+            document.title = `${user.name} - TwiFeed`;
+            document.getElementById("headerName").textContent = user.name;
+            document.getElementById("profileName").textContent = user.name;
+            document.getElementById("profileUid").textContent = `@${user.uid}`;
 
-            const iconWrap = document.getElementById("userIconWrap");
+            const statsEl = document.getElementById("profileStats");
+            statsEl.innerHTML = `
+                <span id="statFollowing" style="cursor:pointer"><strong>${user.following_count}</strong> フォロー中</span>
+                <span id="statFollowers" style="cursor:pointer"><strong id="followerNum">${user.follower_count}</strong> フォロワー</span>
+            `;
+            statsEl.querySelector("#statFollowing").addEventListener("click", () => switchList("following"));
+            statsEl.querySelector("#statFollowers").addEventListener("click", () => switchList("followers"));
+
+            // Avatar
+            const wrap = document.getElementById("avatarWrap");
             if (user.icon_url) {
                 const img = document.createElement("img");
+                img.className = "tw-profile-avatar";
                 img.src = user.icon_url;
                 img.alt = "";
-                img.style.cssText = "width:64px;height:64px;border-radius:50%;object-fit:cover";
-                iconWrap.appendChild(img);
+                wrap.appendChild(img);
             } else {
                 const ph = document.createElement("div");
-                ph.style.cssText = "width:64px;height:64px;border-radius:50%;background:#bbb;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;font-weight:bold";
+                ph.className = "tw-profile-avatar-ph";
                 ph.textContent = user.name.charAt(0).toUpperCase();
-                iconWrap.appendChild(ph);
+                wrap.appendChild(ph);
             }
 
-            const followBtn = document.getElementById("followBtn");
+            // Follow button
+            const btn = document.getElementById("followBtn");
             if (myUid && myUid !== uid) {
-                followBtn.style.display = "inline";
-                updateFollowBtn(followBtn, user.is_following);
-                followBtn.addEventListener("click", () => toggleFollow(followBtn, user.uid));
+                btn.style.display = "inline";
+                updateFollowBtn(btn, user.is_following);
+                btn.addEventListener("click", () => toggleFollow(btn, user.uid));
             }
+
+            document.getElementById("postTabs").style.display = "flex";
         }
 
-        const container = document.getElementById("articles");
+        const container = document.getElementById("posts");
         if (!append) container.innerHTML = "";
         if (articles.length === 0 && !append) {
-            container.textContent = "投稿がありません";
+            container.innerHTML = '<p class="tw-empty">投稿がありません</p>';
         } else {
-            articles.forEach(a => container.appendChild(renderArticle(a)));
+            articles.forEach(a => container.appendChild(renderCard(a)));
         }
-
         nextOffset = next_offset;
-        document.getElementById("moreBtn").style.display = nextOffset !== null ? "inline" : "none";
+        document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
+    }
+
+    async function loadUserList(type) {
+        const res = await fetch(`/follows/${encodeURIComponent(uid)}/${type}`);
+        if (!res.ok) return;
+        const list = await res.json();
+        const container = document.getElementById("posts");
+        container.innerHTML = "";
+        document.getElementById("moreBtn").style.display = "none";
+        if (!list.length) {
+            container.innerHTML = `<p class="tw-empty">${type === "followers" ? "フォロワーはいません" : "フォロー中のユーザーはいません"}</p>`;
+            return;
+        }
+        for (const u of list) {
+            const item = document.createElement("div");
+            item.className = "tw-follow-item";
+            item.innerHTML = `
+                <div class="tw-card-av">
+                    <a href="/user/${encodeURIComponent(u.uid)}" data-link>
+                        <span class="tw-avatar-ph">${escapeHtml(u.name.charAt(0).toUpperCase())}</span>
+                    </a>
+                </div>
+                <div class="tw-follow-info" style="flex:1;min-width:0">
+                    <a class="tw-follow-link" href="/user/${encodeURIComponent(u.uid)}" data-link>${escapeHtml(u.name)}</a>
+                    <span class="tw-follow-uid-text">@${escapeHtml(u.uid)}</span>
+                </div>
+            `;
+            container.appendChild(item);
+        }
+    }
+
+    function switchList(type) {
+        activeList = type;
+        ["tabPosts", "tabFollowers", "tabFollowing"].forEach(id => {
+            document.getElementById(id)?.classList.remove("active");
+        });
+        if (type === "posts") {
+            document.getElementById("tabPosts").classList.add("active");
+            loadPosts(0, false);
+        } else if (type === "followers") {
+            document.getElementById("tabFollowers").classList.add("active");
+            loadUserList("followers");
+        } else {
+            document.getElementById("tabFollowing").classList.add("active");
+            loadUserList("following");
+        }
     }
 
     function updateFollowBtn(btn, isFollowing) {
         btn.textContent = isFollowing ? "フォロー解除" : "フォローする";
-        btn.dataset.following = isFollowing ? "1" : "0";
+        btn.classList.toggle("following", isFollowing);
     }
 
     async function toggleFollow(btn, targetUid) {
-        const isFollowing = btn.dataset.following === "1";
+        const isFollowing = btn.classList.contains("following");
         const res = await fetch(`/follows/${encodeURIComponent(targetUid)}`, {
             method: isFollowing ? "DELETE" : "POST"
         });
         if (res.status === 401) { navigate("/sign"); return; }
         if (res.ok) {
             updateFollowBtn(btn, !isFollowing);
-            const stats = document.getElementById("userStats");
-            const match = stats.textContent.match(/フォロワー (\d+)/);
-            if (match) {
-                const current = parseInt(match[1]);
-                const newCount = isFollowing ? current - 1 : current + 1;
-                stats.textContent = stats.textContent.replace(/フォロワー \d+/, `フォロワー ${newCount}`);
-            }
+            followerCount += isFollowing ? -1 : 1;
+            const el = document.getElementById("followerNum");
+            if (el) el.textContent = followerCount;
         }
     }
+
+    document.getElementById("moreBtn").addEventListener("click", () => loadPosts(nextOffset, true));
+
+    document.getElementById("tabPosts")?.addEventListener("click",     () => switchList("posts"));
+    document.getElementById("tabFollowers")?.addEventListener("click", () => switchList("followers"));
+    document.getElementById("tabFollowing")?.addEventListener("click", () => switchList("following"));
 
     async function init() {
         const meRes = await fetch("/users/me");
-        if (meRes.ok) {
-            const me = await meRes.json();
-            myUid = me.uid;
-        }
-        await loadArticles(0, false);
+        if (meRes.ok) myUid = (await meRes.json()).uid;
+        await loadPosts(0, false);
     }
-
-    document.getElementById("moreBtn").addEventListener("click", () => loadArticles(nextOffset, true));
-
     init();
 }

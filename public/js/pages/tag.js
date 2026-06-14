@@ -1,14 +1,19 @@
 import { navigate } from "../router.js";
 import { renderCard, escapeHtml } from "../renderUtils.js";
+import { showNav } from "../nav.js";
 
 export function renderTag(tagName) {
+    showNav("/search");
+
     document.getElementById("app").innerHTML = `
-        <a href="/" data-link>← ホームに戻る</a>
-        <h1>#${escapeHtml(tagName)}</h1>
-        <div id="timeline"></div>
-        <button id="moreBtn" style="display:none">もっと見る</button>
+        <div class="tw-header">
+            <a class="tw-header-icon-btn" href="/" data-link title="戻る">←</a>
+            <span class="tw-header-title">#${escapeHtml(tagName)}</span>
+        </div>
+        <div class="tw-page" id="timeline"></div>
+        <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
     `;
-    document.title = `#${tagName} - twifeed`;
+    document.title = `#${tagName} - TwiFeed`;
 
     let nextOffset = null;
 
@@ -18,19 +23,13 @@ export function renderTag(tagName) {
         const data = await res.json();
         const container = document.getElementById("timeline");
         if (!append) container.innerHTML = "";
-        if (data.articles.length === 0 && !append) { container.textContent = "投稿がありません"; }
-        for (const a of data.articles) {
-            const card = renderCard(a);
-            const link = document.createElement("a");
-            link.href = `/article/${a.aid}`;
-            link.setAttribute("data-link", "");
-            link.textContent   = "詳細";
-            link.style.cssText = "font-size:0.85em;margin-left:8px";
-            card.appendChild(link);
-            container.appendChild(card);
+        if (!data.articles.length && !append) {
+            container.innerHTML = '<p class="tw-empty">投稿がありません</p>';
+        } else {
+            data.articles.forEach(a => container.appendChild(renderCard(a)));
         }
         nextOffset = data.next_offset;
-        document.getElementById("moreBtn").style.display = nextOffset !== null ? "inline" : "none";
+        document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
     }
 
     document.getElementById("moreBtn").addEventListener("click", () => load(nextOffset, true));
