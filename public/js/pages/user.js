@@ -34,6 +34,7 @@ export function renderUser(uid) {
     let myUid = null;
     let activeList = "posts";
     let followerCount = 0;
+    let profileInitialized = false;
 
     async function loadPosts(offset = 0, append = false) {
         const res = await fetch(`/users/${encodeURIComponent(uid)}?offset=${offset}&limit=20`);
@@ -59,27 +60,31 @@ export function renderUser(uid) {
             statsEl.querySelector("#statFollowing").addEventListener("click", () => switchList("following"));
             statsEl.querySelector("#statFollowers").addEventListener("click", () => switchList("followers"));
 
-            // Avatar
-            const wrap = document.getElementById("avatarWrap");
-            if (user.icon_url) {
-                const img = document.createElement("img");
-                img.className = "tw-profile-avatar";
-                img.src = user.icon_url;
-                img.alt = "";
-                wrap.appendChild(img);
-            } else {
-                const ph = document.createElement("div");
-                ph.className = "tw-profile-avatar-ph";
-                ph.textContent = user.name.charAt(0).toUpperCase();
-                wrap.appendChild(ph);
-            }
+            if (!profileInitialized) {
+                profileInitialized = true;
 
-            // Follow button
-            const btn = document.getElementById("followBtn");
-            if (myUid && myUid !== uid) {
-                btn.style.display = "inline";
-                updateFollowBtn(btn, user.is_following);
-                btn.addEventListener("click", () => toggleFollow(btn, user.uid));
+                // Avatar
+                const wrap = document.getElementById("avatarWrap");
+                if (user.icon_url) {
+                    const img = document.createElement("img");
+                    img.className = "tw-profile-avatar";
+                    img.src = user.icon_url;
+                    img.alt = "";
+                    wrap.appendChild(img);
+                } else {
+                    const ph = document.createElement("div");
+                    ph.className = "tw-profile-avatar-ph";
+                    ph.textContent = user.name.charAt(0).toUpperCase();
+                    wrap.appendChild(ph);
+                }
+
+                // Follow button
+                const btn = document.getElementById("followBtn");
+                if (myUid && myUid !== uid) {
+                    btn.style.display = "inline";
+                    updateFollowBtn(btn, user.is_following);
+                    btn.addEventListener("click", () => toggleFollow(btn, user.uid));
+                }
             }
 
             document.getElementById("postTabs").style.display = "flex";

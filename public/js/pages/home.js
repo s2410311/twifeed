@@ -16,6 +16,7 @@ export function renderHome() {
             <button class="tw-header-icon-btn" id="searchBtn" title="検索">🔍</button>
         </div>
         <div class="tw-chips" id="chipRow"></div>
+        <div id="trendBanner"></div>
         <div class="tw-page" id="timeline"></div>
         <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
         <button class="tw-fab" id="fabBtn" title="投稿">✏️</button>
@@ -69,6 +70,14 @@ export function renderHome() {
         followChip.addEventListener("click", () => selectChip(followChip, "following", null));
         row.appendChild(followChip);
 
+        // 人気チップ（カテゴリ横断トレンド）
+        const popularChip = document.createElement("button");
+        popularChip.className = "tw-chip";
+        popularChip.textContent = "人気";
+        popularChip.dataset.mode = "popular";
+        popularChip.addEventListener("click", () => selectChip(popularChip, "all", null));
+        row.appendChild(popularChip);
+
         const res = await fetch("/categories");
         if (!res.ok) return;
         const data = await res.json();
@@ -95,7 +104,86 @@ export function renderHome() {
         document.getElementById("chipRow").querySelectorAll(".tw-chip")
             .forEach(b => b.classList.remove("active"));
         chip.classList.add("active");
+        if (mode === "following") {
+            document.getElementById("trendBanner").innerHTML = "";
+        } else {
+            loadTrendBanner();
+        }
         loadTimeline(0, false);
+    }
+
+    // ── Long-term trend banner ──
+    async function loadTrendBanner() {
+        const wrap = document.getElementById("trendBanner");
+        if (!wrap) return;
+
+        const res = await fetch("/trending/long");
+        if (!res.ok) { wrap.innerHTML = ""; return; }
+        const { articles } = await res.json();
+
+        wrap.innerHTML = "";
+        if (!articles.length) return;
+
+        const outer = document.createElement("div");
+        outer.className = "tw-trend-wrap";
+
+        const label = document.createElement("p");
+        label.className = "tw-trend-label";
+        label.textContent = "長期トレンド";
+        outer.appendChild(label);
+
+        const scroll = document.createElement("div");
+        scroll.className = "tw-trend-scroll";
+
+        for (const a of articles) {
+            const card = document.createElement("div");
+            card.className = "tw-trend-card";
+            card.addEventListener("click", () => navigate(`/article/${a.aid}`));
+
+            const head = document.createElement("div");
+            head.className = "tw-trend-card-head";
+            if (a.icon_url) {
+                const img = document.createElement("img");
+                img.className = "tw-trend-av";
+                img.src = a.icon_url;
+                img.alt = "";
+                head.appendChild(img);
+            } else {
+                const ph = document.createElement("div");
+                ph.className = "tw-trend-av-ph";
+                ph.textContent = a.name.charAt(0).toUpperCase();
+                head.appendChild(ph);
+            }
+            const name = document.createElement("span");
+            name.className = "tw-trend-name";
+            name.textContent = a.name;
+            head.appendChild(name);
+            card.appendChild(head);
+
+            const content = document.createElement("p");
+            content.className = "tw-trend-content";
+            content.textContent = a.content;
+            card.appendChild(content);
+
+            const foot = document.createElement("div");
+            foot.className = "tw-trend-foot";
+            const likes = document.createElement("span");
+            likes.className = "tw-trend-likes";
+            likes.textContent = `♥ ${a.like_count}`;
+            foot.appendChild(likes);
+            if (a.category_name) {
+                const cat = document.createElement("span");
+                cat.className = "tw-trend-cat";
+                cat.textContent = a.category_name;
+                foot.appendChild(cat);
+            }
+            card.appendChild(foot);
+
+            scroll.appendChild(card);
+        }
+
+        outer.appendChild(scroll);
+        wrap.appendChild(outer);
     }
 
     // ── Timeline ──

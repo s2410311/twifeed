@@ -16,6 +16,7 @@ import usersRouter from "./routes/users.js";
 import tagsRouter from "./routes/tags.js";
 import categoriesRouter from "./routes/categories.js";
 import streamRouter from "./routes/stream.js";
+import trendingRouter from "./routes/trending.js";
 
 import { flushAllViews } from "./lib/views.js";
 import { flushAllExp } from "./lib/exp.js";
@@ -41,6 +42,7 @@ app.use("/users", usersRouter);
 app.use("/tags", tagsRouter);
 app.use("/categories", categoriesRouter);
 app.use("/stream", streamRouter);
+app.use("/trending", trendingRouter);
 
 
 // SPAフォールバック：APIと静的ファイル以外は index.html を返す
