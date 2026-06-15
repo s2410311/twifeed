@@ -74,8 +74,11 @@ router.post("/:uid", requireAuth, (req, res) => {
     const receiver = db.prepare("SELECT uid, dm_setting FROM users WHERE uid = ?").get(receiverUid);
     if (!receiver) return res.status(404).json({ error: "user not found" });
 
-    const dmSetting = receiver.dm_setting ?? "mutual";
-    if (dmSetting === "mutual") {
+    const sender = db.prepare("SELECT dm_setting FROM users WHERE uid = ?").get(senderUid);
+    const needsMutual = (sender?.dm_setting ?? "mutual") === "mutual"
+                     || (receiver.dm_setting  ?? "mutual") === "mutual";
+
+    if (needsMutual) {
         const iFollow    = !!db.prepare("SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?").get(senderUid, receiverUid);
         const theyFollow = !!db.prepare("SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?").get(receiverUid, senderUid);
         if (!iFollow || !theyFollow) return res.status(403).json({ error: "dm not allowed" });

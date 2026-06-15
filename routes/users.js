@@ -178,16 +178,17 @@ router.get("/:uid", requireAuth, async (req, res) => {
     const delta = parseInt(await redis.get(`exp:${uid}`)) || 0;
     const level = expToLevel(Math.max(user.exp + delta, 0));
 
-    const dmSetting = user.dm_setting ?? "mutual";
     let can_dm = false;
     if (myUid !== uid) {
-        if (dmSetting === "open") {
-            can_dm = true;
-        } else {
+        const myDmSetting = db.prepare("SELECT dm_setting FROM users WHERE uid = ?").get(myUid)?.dm_setting ?? "mutual";
+        const needsMutual = myDmSetting === "mutual" || (user.dm_setting ?? "mutual") === "mutual";
+        if (needsMutual) {
             const theyFollowMe = !!db.prepare(
                 "SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?"
             ).get(uid, myUid);
             can_dm = is_following && theyFollowMe;
+        } else {
+            can_dm = true;
         }
     }
 
