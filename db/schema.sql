@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS users(
     email TEXT UNIQUE,
     exp TEXT,
     department TEXT,
+    role TEXT,
     created_at INTEGER
 );
  

@@ -45,18 +45,40 @@ export function renderProfile() {
                     <input id="email" type="email" class="tw-settings-input">
                 </div>
                 <div class="tw-field-set">
-                    <label>所属学群</label>
+                    <label>身分</label>
+                    <select id="role" class="tw-settings-input">
+                        <option value="">未設定</option>
+                        <option>学生</option>
+                        <option>教員</option>
+                        <option>職員</option>
+                    </select>
+                </div>
+                <div class="tw-field-set">
+                    <label>所属学群・研究科</label>
                     <select id="department" class="tw-settings-input">
                         <option value="">未設定</option>
-                        <option>人文・文化学群</option>
-                        <option>社会・国際学群</option>
-                        <option>人間学群</option>
-                        <option>生命環境学群</option>
-                        <option>情報学群</option>
-                        <option>医学群</option>
-                        <option>体育専門学群</option>
-                        <option>芸術専門学群</option>
-                        <option>総合学域群</option>
+                        <optgroup label="学士課程">
+                            <option>人文・文化学群</option>
+                            <option>社会・国際学群</option>
+                            <option>人間学群</option>
+                            <option>生命環境学群</option>
+                            <option>情報学群</option>
+                            <option>医学群</option>
+                            <option>体育専門学群</option>
+                            <option>芸術専門学群</option>
+                            <option>総合学域群</option>
+                        </optgroup>
+                        <optgroup label="大学院">
+                            <option>教育研究科</option>
+                            <option>人文社会科学研究科</option>
+                            <option>ビジネス科学研究科</option>
+                            <option>数理物質科学研究科</option>
+                            <option>システム情報工学研究科</option>
+                            <option>生命環境科学研究科</option>
+                            <option>人間総合科学研究科</option>
+                            <option>図書館情報メディア研究科</option>
+                            <option>グローバル教育院</option>
+                        </optgroup>
                     </select>
                 </div>
                 <button class="tw-save-btn" id="saveBtn">保存する</button>
@@ -97,6 +119,7 @@ export function renderProfile() {
         document.getElementById("uid").value        = user.uid        ?? "";
         document.getElementById("name").value       = user.name       ?? "";
         document.getElementById("email").value      = user.email      ?? "";
+        document.getElementById("role").value       = user.role       ?? "";
         document.getElementById("department").value = user.department ?? "";
 
         const levelWrap = document.getElementById("levelWrap");
@@ -183,6 +206,7 @@ export function renderProfile() {
         const uid        = document.getElementById("uid").value.trim();
         const name       = document.getElementById("name").value.trim();
         const email      = document.getElementById("email").value.trim();
+        const role       = document.getElementById("role").value       || null;
         const department = document.getElementById("department").value || null;
         if (!uid)   { showSaveStatus("ユーザーIDを入力してください", "var(--danger)"); return; }
         if (!name)  { showSaveStatus("表示名を入力してください", "var(--danger)"); return; }
@@ -190,7 +214,7 @@ export function renderProfile() {
         const res = await fetch("/users/me", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uid, name, email, department })
+            body: JSON.stringify({ uid, name, email, role, department })
         });
         if (res.ok) { showSaveStatus("保存しました！", "green"); await loadProfile(); }
         else { const err = await res.json(); showSaveStatus("エラー: " + (err.error || res.status), "var(--danger)"); }
