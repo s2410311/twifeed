@@ -145,6 +145,54 @@ router.patch("/me", requireAuth, async (req, res) => {
     res.json({ ok: true });
 });
 
+// ユーザー検索（/:uid より前に定義）
+router.get("/search", requireAuth, (req, res) => {
+    const q = (req.query.q ?? "").trim();
+    const department = req.query.department ?? null;
+    const role = req.query.role ?? null;
+    const myUid = req.session.uid;
+    const offset = Math.max(0, parseInt(req.query.offset) || 0);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+
+    if (!q && !department && !role) return res.json({ users: [], next_offset: null });
+
+    const conditions = [];
+    const params = [myUid];
+
+    if (q) {
+        conditions.push("(u.name LIKE ? OR u.uid LIKE ?)");
+        params.push(`%${q}%`, `%${q}%`);
+    }
+    if (department) {
+        conditions.push("u.department = ?");
+        params.push(department);
+    }
+    if (role) {
+        conditions.push("u.role = ?");
+        params.push(role);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const users = db.prepare(`
+        SELECT u.uid, u.name, u.department, u.role,
+               (SELECT COUNT(*) FROM follows WHERE followee_uid = u.uid) AS follower_count,
+               ui.url AS icon_url,
+               EXISTS(SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = u.uid) AS is_following
+        FROM users u
+        LEFT JOIN user_images ui ON ui.id = u.uid
+        ${where}
+        ORDER BY follower_count DESC
+        LIMIT ? OFFSET ?
+    `).all(...params, limit, offset);
+
+    const next_offset = users.length === limit ? offset + limit : null;
+    res.json({
+        users: users.map(u => ({ ...u, is_following: !!u.is_following })),
+        next_offset,
+    });
+});
+
 // 公開プロフィール（/me より後に定義）
 router.get("/:uid", requireAuth, async (req, res) => {
     const { uid } = req.params;
