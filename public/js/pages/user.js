@@ -13,7 +13,10 @@ export function renderUser(uid) {
         <div class="tw-banner"></div>
         <div class="tw-profile-av-row">
             <div id="avatarWrap"></div>
-            <button class="tw-follow-btn" id="followBtn" style="display:none"></button>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="tw-talk-btn"   id="talkBtn"   style="display:none">トーク</button>
+                <button class="tw-follow-btn" id="followBtn" style="display:none"></button>
+            </div>
         </div>
         <div class="tw-profile-info" id="profileInfo">
             <p class="tw-profile-name" id="profileName"></p>
@@ -78,6 +81,15 @@ export function renderUser(uid) {
             `;
             statsEl.querySelector("#statFollowing").addEventListener("click", () => switchList("following"));
             statsEl.querySelector("#statFollowers").addEventListener("click", () => switchList("followers"));
+
+            // トークボタン（can_dmはフォロー状態変化で変わるため毎回更新）
+            const talkBtn = document.getElementById("talkBtn");
+            if (myUid && myUid !== uid && user.can_dm) {
+                talkBtn.style.display = "";
+                talkBtn.onclick = () => navigate(`/talk/${encodeURIComponent(uid)}`);
+            } else {
+                talkBtn.style.display = "none";
+            }
 
             if (!profileInitialized) {
                 profileInitialized = true;

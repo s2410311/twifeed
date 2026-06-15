@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/me", requireAuth, async (req, res) => {
     const uid = req.session.uid;
     const user = db.prepare(
-        "SELECT uid, name, email, department, role, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
+        "SELECT uid, name, email, department, role, dm_setting, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
     ).get(uid);
 
     if (!user) return res.status(404).json({ error: "user not found" });
@@ -40,6 +40,7 @@ router.get("/me", requireAuth, async (req, res) => {
         email: user.email,
         department: user.department ?? null,
         role: user.role ?? null,
+        dm_setting: user.dm_setting ?? "mutual",
         level,
         exp: totalExp,
         exp_to_next: expForNext - totalExp,
@@ -78,7 +79,7 @@ const changeUid = db.transaction((oldUid, newUid) => {
 });
 
 router.patch("/me", requireAuth, async (req, res) => {
-    const { uid: newUid, name, email, department, role } = req.body;
+    const { uid: newUid, name, email, department, role, dm_setting } = req.body;
     const oldUid = req.session.uid;
 
     if (newUid !== undefined) {
@@ -124,6 +125,9 @@ router.patch("/me", requireAuth, async (req, res) => {
     if (role !== undefined && role !== null && !VALID_ROLES.has(role)) {
         return res.status(400).json({ error: "invalid role" });
     }
+    if (dm_setting !== undefined && !["mutual", "open"].includes(dm_setting)) {
+        return res.status(400).json({ error: "invalid dm_setting" });
+    }
 
     const fields = [];
     const values = [];
@@ -131,6 +135,7 @@ router.patch("/me", requireAuth, async (req, res) => {
     if (email !== undefined)      { fields.push("email = ?");      values.push(email.trim()); }
     if (department !== undefined) { fields.push("department = ?"); values.push(department ?? null); }
     if (role !== undefined)       { fields.push("role = ?");       values.push(role ?? null); }
+    if (dm_setting !== undefined) { fields.push("dm_setting = ?"); values.push(dm_setting); }
 
     if (fields.length > 0) {
         values.push(currentUid);
@@ -148,7 +153,7 @@ router.get("/:uid", requireAuth, async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
 
     const user = db.prepare(
-        "SELECT uid, name, department, role, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
+        "SELECT uid, name, department, role, dm_setting, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
     ).get(uid);
     if (!user) return res.status(404).json({ error: "user not found" });
 
@@ -168,6 +173,19 @@ router.get("/:uid", requireAuth, async (req, res) => {
 
     const delta = parseInt(await redis.get(`exp:${uid}`)) || 0;
     const level = expToLevel(Math.max(user.exp + delta, 0));
+
+    const dmSetting = user.dm_setting ?? "mutual";
+    let can_dm = false;
+    if (myUid !== uid) {
+        if (dmSetting === "open") {
+            can_dm = true;
+        } else {
+            const theyFollowMe = !!db.prepare(
+                "SELECT 1 FROM follows WHERE follower_uid = ? AND followee_uid = ?"
+            ).get(uid, myUid);
+            can_dm = is_following && theyFollowMe;
+        }
+    }
 
     const articles = db.prepare(`
         SELECT a.aid, a.uid, u.name, a.content, a.parent_aid, a.root_aid, a.cid, a.created_at,
@@ -199,7 +217,7 @@ router.get("/:uid", requireAuth, async (req, res) => {
     const next_offset = articles.length === limit ? offset + limit : null;
 
     res.json({
-        user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null, level, role: user.role ?? null },
+        user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null, level, role: user.role ?? null, can_dm },
         articles,
         next_offset,
     });

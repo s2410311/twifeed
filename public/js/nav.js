@@ -5,9 +5,10 @@ export function showNav(activePath) {
         navEl = document.createElement("nav");
         navEl.className = "tw-bottom-nav";
         navEl.innerHTML = `
-            <a class="tw-nav-btn" href="/"        data-link title="ホーム">🏠</a>
-            <a class="tw-nav-btn" href="/search"  data-link title="検索">🔍</a>
-            <a class="tw-nav-btn" href="/profile" data-link title="プロフィール">👤</a>
+            <a class="tw-nav-btn" href="/"         data-link title="ホーム">🏠</a>
+            <a class="tw-nav-btn" href="/search"   data-link title="検索">🔍</a>
+            <a class="tw-nav-btn" href="/messages" data-link title="DM">✉️</a>
+            <a class="tw-nav-btn" href="/profile"  data-link title="プロフィール">👤</a>
         `;
         document.body.appendChild(navEl);
     }

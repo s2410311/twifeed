@@ -86,6 +86,23 @@ export function renderProfile() {
             </div>
 
             <div class="tw-settings-sec">
+                <p class="tw-settings-ttl">ダイレクトメッセージ</p>
+                <a href="/messages" data-link class="tw-save-btn"
+                   style="display:inline-block;text-decoration:none;text-align:center;margin-bottom:16px">
+                    受信トレイを開く →
+                </a>
+                <div class="tw-field-set">
+                    <label>受信設定</label>
+                    <select id="dmSetting" class="tw-settings-input">
+                        <option value="mutual">相互フォローのみ</option>
+                        <option value="open">全員から受信</option>
+                    </select>
+                </div>
+                <button class="tw-save-btn" id="dmSaveBtn">保存する</button>
+                <p class="tw-settings-status" id="dmStatus"></p>
+            </div>
+
+            <div class="tw-settings-sec">
                 <p class="tw-settings-ttl">フォロー中</p>
                 <div id="followingList"></div>
             </div>
@@ -119,8 +136,9 @@ export function renderProfile() {
         document.getElementById("uid").value        = user.uid        ?? "";
         document.getElementById("name").value       = user.name       ?? "";
         document.getElementById("email").value      = user.email      ?? "";
-        document.getElementById("role").value       = user.role       ?? "";
-        document.getElementById("department").value = user.department ?? "";
+        document.getElementById("role").value       = user.role        ?? "";
+        document.getElementById("department").value = user.department  ?? "";
+        document.getElementById("dmSetting").value  = user.dm_setting  ?? "mutual";
 
         const levelWrap = document.getElementById("levelWrap");
         levelWrap.innerHTML = `
@@ -221,6 +239,25 @@ export function renderProfile() {
     }
 
     document.getElementById("saveBtn").addEventListener("click", save);
+
+    document.getElementById("dmSaveBtn").addEventListener("click", async () => {
+        const dmStatus  = document.getElementById("dmStatus");
+        const dm_setting = document.getElementById("dmSetting").value;
+        const r = await fetch("/users/me", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dm_setting }),
+        });
+        if (r.ok) {
+            dmStatus.textContent = "保存しました！";
+            dmStatus.style.color = "green";
+            setTimeout(() => { dmStatus.textContent = ""; }, 3000);
+        } else {
+            const err = await r.json();
+            dmStatus.textContent = "エラー: " + (err.error || r.status);
+            dmStatus.style.color = "var(--danger)";
+        }
+    });
     document.getElementById("logoutBtn").addEventListener("click", async () => {
         await fetch("/logout", { method: "POST" });
         navigate("/sign");

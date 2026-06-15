@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users(
     exp TEXT,
     department TEXT,
     role TEXT,
+    dm_setting TEXT DEFAULT 'mutual',
     created_at INTEGER
 );
  
@@ -92,6 +93,16 @@ CREATE TABLE IF NOT EXISTS likes (
     PRIMARY KEY (uid, aid)
 );
  
+-- ダイレクトメッセージ
+CREATE TABLE IF NOT EXISTS messages (
+    mid INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_uid TEXT NOT NULL,
+    receiver_uid TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER,
+    read_at INTEGER
+);
+
 -- タイムライン（Redisキャッシュ用・RDB側の定義）
 CREATE TABLE IF NOT EXISTS timeline (
     uid TEXT NOT NULL,

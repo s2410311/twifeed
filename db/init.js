@@ -10,6 +10,15 @@ db.exec(schema);
 
 try { db.exec("ALTER TABLE users ADD COLUMN department TEXT"); } catch {}
 try { db.exec("ALTER TABLE users ADD COLUMN role TEXT"); } catch {}
+try { db.exec("ALTER TABLE users ADD COLUMN dm_setting TEXT DEFAULT 'mutual'"); } catch {}
+try { db.exec(`CREATE TABLE IF NOT EXISTS messages (
+    mid INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_uid TEXT NOT NULL,
+    receiver_uid TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at INTEGER,
+    read_at INTEGER
+)`); } catch {}
 
 const categories = ["料理", "ファッション", "学習", "スポーツ", "ゲーム", "本", "キャリア"];
 const insert = db.prepare("INSERT OR IGNORE INTO categories (name, created_at) VALUES (?, ?)");
