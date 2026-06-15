@@ -495,48 +495,67 @@ a.tw-badge:hover { background: var(--text); color: var(--bg); border-color: var(
 .tw-post-status { font-size: 0.82em; color: var(--danger); padding: 0 16px 8px; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Profile / User page
+   Profile / User page — Instagram style
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.tw-banner {
-  height: 140px;
-  background: linear-gradient(160deg, #1a1a1a 0%, #3d3d3d 100%);
+.tw-iprofile { padding: 20px 16px 0; }
+.tw-iprofile-top {
+  display: flex; align-items: center; gap: 24px; margin-bottom: 14px;
 }
-.tw-profile-av-row {
-  display: flex; justify-content: space-between; align-items: flex-end;
-  padding: 0 16px; margin-top: -22px; margin-bottom: 12px;
+
+.tw-iprofile-avatar, .tw-iprofile-avatar-ph {
+  width: 86px; height: 86px; border-radius: var(--r-full); flex-shrink: 0;
 }
-.tw-profile-avatar, .tw-profile-avatar-ph {
-  width: 76px; height: 76px; border-radius: var(--r-full);
-  border: 4px solid var(--bg);
+.tw-iprofile-avatar {
+  object-fit: cover; display: block;
+  border: 2px solid var(--border2); box-shadow: var(--shadow);
 }
-.tw-profile-avatar { object-fit: cover; display: block; box-shadow: var(--shadow); }
-.tw-profile-avatar-ph {
+.tw-iprofile-avatar-ph {
   background: linear-gradient(135deg, #cfd9de, #b0bfc6);
-  color: #fff;
+  color: #fff; font-size: 30px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  font-size: 28px; font-weight: 700;
+  border: 2px solid var(--border2);
 }
-.tw-profile-info { padding: 2px 16px 14px; border-bottom: 1px solid var(--border); }
-.tw-profile-name { font-size: 1.12em; font-weight: 800; letter-spacing: -0.3px; }
-.tw-profile-uid  { color: var(--text2); font-size: 0.88em; margin-top: 2px; }
-.tw-profile-badges {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+
+.tw-iprofile-stats {
+  flex: 1; display: flex; justify-content: space-around;
 }
+.tw-iprofile-stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.tw-iprofile-stat strong { font-size: 1.1em; font-weight: 800; color: var(--text); }
+.tw-iprofile-stat span   { font-size: 0.76em; color: var(--text2); }
+.tw-iprofile-stat--btn   { cursor: pointer; transition: opacity var(--dur) var(--ease); }
+.tw-iprofile-stat--btn:hover { opacity: 0.65; }
+
+.tw-iprofile-name { font-size: 1em; font-weight: 800; letter-spacing: -0.2px; margin-bottom: 2px; }
+.tw-profile-uid   { color: var(--text2); font-size: 0.85em; margin-top: 1px; }
+
+.tw-profile-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .tw-profile-dept, .tw-profile-role {
   display: inline-block;
   font-size: 0.78em; font-weight: 600; color: var(--text2);
   background: var(--bg-hover); border: 1px solid var(--border);
   padding: 2px 10px; border-radius: var(--r-full);
 }
-.tw-profile-role {
-  color: var(--text); background: var(--bg-subtle);
+.tw-profile-role { color: var(--text); background: var(--bg-subtle); }
+
+.tw-iprofile-btns {
+  display: flex; gap: 8px; margin-top: 14px; padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
-.tw-profile-stats {
-  display: flex; gap: 18px; margin-top: 12px; font-size: 0.88em;
+.tw-iprofile-btns .tw-follow-btn,
+.tw-iprofile-btns .tw-talk-btn { flex: 1; }
+
+/* 設定ページ用アバター */
+.tw-profile-avatar, .tw-profile-avatar-ph {
+  width: 76px; height: 76px; border-radius: var(--r-full); border: 4px solid var(--bg);
 }
-.tw-profile-stats span { color: var(--text2); cursor: pointer; transition: color var(--dur) var(--ease); }
-.tw-profile-stats span:hover { color: var(--text); }
-.tw-profile-stats strong { color: var(--text); font-weight: 700; }
+.tw-profile-avatar { object-fit: cover; display: block; box-shadow: var(--shadow); }
+.tw-profile-avatar-ph {
+  background: linear-gradient(135deg, #cfd9de, #b0bfc6); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 700;
+}
 
 /* Follow button */
 .tw-follow-btn {

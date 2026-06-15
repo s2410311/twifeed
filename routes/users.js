@@ -171,6 +171,10 @@ router.get("/:uid", requireAuth, async (req, res) => {
 
     const iconRow = db.prepare("SELECT url FROM user_images WHERE id = ?").get(uid);
 
+    const post_count = db.prepare(
+        "SELECT COUNT(*) AS c FROM articles WHERE uid = ? AND parent_aid IS NULL"
+    ).get(uid).c;
+
     const delta = parseInt(await redis.get(`exp:${uid}`)) || 0;
     const level = expToLevel(Math.max(user.exp + delta, 0));
 
@@ -217,7 +221,7 @@ router.get("/:uid", requireAuth, async (req, res) => {
     const next_offset = articles.length === limit ? offset + limit : null;
 
     res.json({
-        user: { ...user, follower_count, following_count, is_following, icon_url: iconRow?.url ?? null, level, role: user.role ?? null, can_dm },
+        user: { ...user, follower_count, following_count, post_count, is_following, icon_url: iconRow?.url ?? null, level, role: user.role ?? null, can_dm },
         articles,
         next_offset,
     });

@@ -2,3 +2,4 @@ node_modules/
 cert/
 db/sns.db
 .claude
+follow_ui/

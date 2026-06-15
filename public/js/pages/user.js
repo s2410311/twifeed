@@ -10,23 +10,38 @@ export function renderUser(uid) {
             <a class="tw-header-icon-btn" href="/" data-link title="戻る">←</a>
             <span class="tw-header-title" id="headerName">ユーザー</span>
         </div>
-        <div class="tw-banner"></div>
-        <div class="tw-profile-av-row">
-            <div id="avatarWrap"></div>
-            <div style="display:flex;gap:8px;align-items:center">
+
+        <div class="tw-iprofile">
+            <div class="tw-iprofile-top">
+                <div id="avatarWrap"></div>
+                <div class="tw-iprofile-stats">
+                    <div class="tw-iprofile-stat">
+                        <strong id="postCount">—</strong><span>投稿</span>
+                    </div>
+                    <div class="tw-iprofile-stat tw-iprofile-stat--btn" id="statFollowers">
+                        <strong id="followerNum">—</strong><span>フォロワー</span>
+                    </div>
+                    <div class="tw-iprofile-stat tw-iprofile-stat--btn" id="statFollowing">
+                        <strong id="followingNum">—</strong><span>フォロー中</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="tw-iprofile-name" id="profileName"></p>
+            <p class="tw-profile-uid"   id="profileUid"></p>
+
+            <div class="tw-profile-badges" id="profileBadges">
+                <span class="tw-profile-role" id="profileRole" style="display:none"></span>
+                <span class="tw-profile-dept" id="profileDept" style="display:none"></span>
+                <span class="tw-level-pill"   id="levelPill"   style="display:none"></span>
+            </div>
+
+            <div class="tw-iprofile-btns" id="profileBtns" style="display:none">
                 <button class="tw-talk-btn"   id="talkBtn"   style="display:none">トーク</button>
                 <button class="tw-follow-btn" id="followBtn" style="display:none"></button>
             </div>
         </div>
-        <div class="tw-profile-info" id="profileInfo">
-            <p class="tw-profile-name" id="profileName"></p>
-            <p class="tw-profile-uid"  id="profileUid"></p>
-            <div class="tw-profile-badges">
-                <p class="tw-profile-role" id="profileRole" style="display:none"></p>
-                <p class="tw-profile-dept" id="profileDept" style="display:none"></p>
-            </div>
-            <div class="tw-profile-stats" id="profileStats"></div>
-        </div>
+
         <div id="userListWrap"></div>
         <div class="tw-tabs" id="postTabs" style="display:none">
             <button class="tw-tab active" id="tabPosts">投稿</button>
@@ -55,34 +70,26 @@ export function renderUser(uid) {
 
         if (!append) {
             document.title = `${user.name} - TwiFeed`;
-            document.getElementById("headerName").textContent = user.name;
+            document.getElementById("headerName").textContent  = user.name;
             document.getElementById("profileName").textContent = user.name;
-            document.getElementById("profileUid").textContent = `@${user.uid}`;
+            document.getElementById("profileUid").textContent  = `@${user.uid}`;
+            document.getElementById("postCount").textContent   = user.post_count ?? "—";
+            document.getElementById("followerNum").textContent = user.follower_count;
+            document.getElementById("followingNum").textContent = user.following_count;
+
             const roleEl = document.getElementById("profileRole");
-            if (user.role) {
-                roleEl.textContent = user.role;
-                roleEl.style.display = "";
-            } else {
-                roleEl.style.display = "none";
-            }
+            roleEl.textContent   = user.role ?? "";
+            roleEl.style.display = user.role ? "" : "none";
+
             const deptEl = document.getElementById("profileDept");
-            if (user.department) {
-                deptEl.textContent = user.department;
-                deptEl.style.display = "";
-            } else {
-                deptEl.style.display = "none";
-            }
+            deptEl.textContent   = user.department ?? "";
+            deptEl.style.display = user.department ? "" : "none";
 
-            const statsEl = document.getElementById("profileStats");
-            statsEl.innerHTML = `
-                <span id="statFollowing" style="cursor:pointer"><strong>${user.following_count}</strong> フォロー中</span>
-                <span id="statFollowers" style="cursor:pointer"><strong id="followerNum">${user.follower_count}</strong> フォロワー</span>
-                <span class="tw-level-pill" style="margin-left:auto">Lv.<strong>${user.level}</strong></span>
-            `;
-            statsEl.querySelector("#statFollowing").addEventListener("click", () => switchList("following"));
-            statsEl.querySelector("#statFollowers").addEventListener("click", () => switchList("followers"));
+            const levelEl = document.getElementById("levelPill");
+            levelEl.innerHTML    = `Lv.<strong>${user.level}</strong>`;
+            levelEl.style.display = "";
 
-            // トークボタン（can_dmはフォロー状態変化で変わるため毎回更新）
+            // トークボタン（can_dm はフォロー状態で変わるため毎回更新）
             const talkBtn = document.getElementById("talkBtn");
             if (myUid && myUid !== uid && user.can_dm) {
                 talkBtn.style.display = "";
@@ -98,24 +105,33 @@ export function renderUser(uid) {
                 const wrap = document.getElementById("avatarWrap");
                 if (user.icon_url) {
                     const img = document.createElement("img");
-                    img.className = "tw-profile-avatar";
+                    img.className = "tw-iprofile-avatar";
                     img.src = user.icon_url;
                     img.alt = "";
                     wrap.appendChild(img);
                 } else {
                     const ph = document.createElement("div");
-                    ph.className = "tw-profile-avatar-ph";
+                    ph.className = "tw-iprofile-avatar-ph";
                     ph.textContent = user.name.charAt(0).toUpperCase();
                     wrap.appendChild(ph);
                 }
 
-                // Follow button
+                // フォローボタン
                 const btn = document.getElementById("followBtn");
                 if (myUid && myUid !== uid) {
-                    btn.style.display = "inline";
+                    btn.style.display = "";
                     updateFollowBtn(btn, user.is_following);
                     btn.addEventListener("click", () => toggleFollow(btn, user.uid));
                 }
+
+                // スタットクリック
+                document.getElementById("statFollowers").addEventListener("click", () => switchList("followers"));
+                document.getElementById("statFollowing").addEventListener("click", () => switchList("following"));
+            }
+
+            // ボタン行は他ユーザーのみ表示
+            if (myUid && myUid !== uid) {
+                document.getElementById("profileBtns").style.display = "flex";
             }
 
             document.getElementById("postTabs").style.display = "flex";
@@ -153,9 +169,7 @@ export function renderUser(uid) {
             avLink.setAttribute("data-link", "");
             if (u.icon_url) {
                 const img = document.createElement("img");
-                img.className = "tw-avatar";
-                img.src = u.icon_url;
-                img.alt = "";
+                img.className = "tw-avatar"; img.src = u.icon_url; img.alt = "";
                 avLink.appendChild(img);
             } else {
                 const ph = document.createElement("span");
@@ -177,13 +191,11 @@ export function renderUser(uid) {
             if (myUid && myUid !== u.uid) {
                 let following = !!u.is_following;
                 const btn = document.createElement("button");
-
                 function updateBtn() {
                     btn.textContent = following ? "フォロー解除" : "フォローバック";
                     btn.className   = following ? "tw-unfollow-btn" : "tw-followback-btn";
                 }
                 updateBtn();
-
                 btn.addEventListener("click", async () => {
                     const r = await fetch(`/follows/${encodeURIComponent(u.uid)}`, {
                         method: following ? "DELETE" : "POST"
@@ -200,9 +212,9 @@ export function renderUser(uid) {
 
     function switchList(type) {
         activeList = type;
-        ["tabPosts", "tabFollowers", "tabFollowing"].forEach(id => {
-            document.getElementById(id)?.classList.remove("active");
-        });
+        ["tabPosts", "tabFollowers", "tabFollowing"].forEach(id =>
+            document.getElementById(id)?.classList.remove("active")
+        );
         if (type === "posts") {
             document.getElementById("tabPosts").classList.add("active");
             loadPosts(0, false);
@@ -235,7 +247,6 @@ export function renderUser(uid) {
     }
 
     document.getElementById("moreBtn").addEventListener("click", () => loadPosts(nextOffset, true));
-
     document.getElementById("tabPosts")?.addEventListener("click",     () => switchList("posts"));
     document.getElementById("tabFollowers")?.addEventListener("click", () => switchList("followers"));
     document.getElementById("tabFollowing")?.addEventListener("click", () => switchList("following"));
