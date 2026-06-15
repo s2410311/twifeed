@@ -44,6 +44,21 @@ export function renderProfile() {
                     <label>メールアドレス</label>
                     <input id="email" type="email" class="tw-settings-input">
                 </div>
+                <div class="tw-field-set">
+                    <label>所属学群</label>
+                    <select id="department" class="tw-settings-input">
+                        <option value="">未設定</option>
+                        <option>人文・文化学群</option>
+                        <option>社会・国際学群</option>
+                        <option>人間学群</option>
+                        <option>生命環境学群</option>
+                        <option>情報学群</option>
+                        <option>医学群</option>
+                        <option>体育専門学群</option>
+                        <option>芸術専門学群</option>
+                        <option>総合学域群</option>
+                    </select>
+                </div>
                 <button class="tw-save-btn" id="saveBtn">保存する</button>
                 <p class="tw-settings-status" id="saveStatus"></p>
             </div>
@@ -79,9 +94,10 @@ export function renderProfile() {
         const res = await fetch("/users/me");
         if (res.status === 401) { navigate("/sign"); return; }
         const user = await res.json();
-        document.getElementById("uid").value   = user.uid   ?? "";
-        document.getElementById("name").value  = user.name  ?? "";
-        document.getElementById("email").value = user.email ?? "";
+        document.getElementById("uid").value        = user.uid        ?? "";
+        document.getElementById("name").value       = user.name       ?? "";
+        document.getElementById("email").value      = user.email      ?? "";
+        document.getElementById("department").value = user.department ?? "";
 
         const levelWrap = document.getElementById("levelWrap");
         levelWrap.innerHTML = `
@@ -164,16 +180,17 @@ export function renderProfile() {
     }
 
     async function save() {
-        const uid   = document.getElementById("uid").value.trim();
-        const name  = document.getElementById("name").value.trim();
-        const email = document.getElementById("email").value.trim();
+        const uid        = document.getElementById("uid").value.trim();
+        const name       = document.getElementById("name").value.trim();
+        const email      = document.getElementById("email").value.trim();
+        const department = document.getElementById("department").value || null;
         if (!uid)   { showSaveStatus("ユーザーIDを入力してください", "var(--danger)"); return; }
         if (!name)  { showSaveStatus("表示名を入力してください", "var(--danger)"); return; }
         if (!email) { showSaveStatus("メールアドレスを入力してください", "var(--danger)"); return; }
         const res = await fetch("/users/me", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uid, name, email })
+            body: JSON.stringify({ uid, name, email, department })
         });
         if (res.ok) { showSaveStatus("保存しました！", "green"); await loadProfile(); }
         else { const err = await res.json(); showSaveStatus("エラー: " + (err.error || res.status), "var(--danger)"); }

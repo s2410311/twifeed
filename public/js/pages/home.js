@@ -107,17 +107,18 @@ export function renderHome() {
         if (mode === "following") {
             document.getElementById("trendBanner").innerHTML = "";
         } else {
-            loadTrendBanner();
+            loadTrendBanner(cid);
         }
         loadTimeline(0, false);
     }
 
     // ── Long-term trend banner ──
-    async function loadTrendBanner() {
+    async function loadTrendBanner(cid = null) {
         const wrap = document.getElementById("trendBanner");
         if (!wrap) return;
 
-        const res = await fetch("/trending/long");
+        const params = cid ? `?cid=${cid}` : "";
+        const res = await fetch(`/trending/long${params}`);
         if (!res.ok) { wrap.innerHTML = ""; return; }
         const { articles } = await res.json();
 

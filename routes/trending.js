@@ -8,6 +8,7 @@ const GRAVITY = 1.5;
 router.get("/long", requireAuth, async (req, res) => {
     const uid = req.session.uid;
     const since = Date.now() - 30 * 24 * 3600000;
+    const cid = req.query.cid ? parseInt(req.query.cid) : null;
 
     const articles = db.prepare(`
         SELECT a.aid, a.uid, u.name, a.content, a.cid, a.created_at,
@@ -22,8 +23,9 @@ router.get("/long", requireAuth, async (req, res) => {
         LEFT JOIN user_images ui ON ui.id = a.uid
         LEFT JOIN categories c ON c.cid = a.cid
         WHERE a.created_at >= ? AND a.parent_aid IS NULL
+        ${cid ? "AND a.cid = ?" : ""}
         GROUP BY a.aid
-    `).all(uid, since);
+    `).all(uid, since, ...(cid ? [cid] : []));
 
     const scored = articles.map(a => {
         const hours = (Date.now() - a.created_at) / 3600000;

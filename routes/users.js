@@ -21,7 +21,7 @@ const router = express.Router();
 router.get("/me", requireAuth, async (req, res) => {
     const uid = req.session.uid;
     const user = db.prepare(
-        "SELECT uid, name, email, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
+        "SELECT uid, name, email, department, COALESCE(CAST(exp AS INTEGER), 0) AS exp FROM users WHERE uid = ?"
     ).get(uid);
 
     if (!user) return res.status(404).json({ error: "user not found" });
@@ -38,6 +38,7 @@ router.get("/me", requireAuth, async (req, res) => {
         uid: user.uid,
         name: user.name,
         email: user.email,
+        department: user.department ?? null,
         level,
         exp: totalExp,
         exp_to_next: expForNext - totalExp,
@@ -76,7 +77,7 @@ const changeUid = db.transaction((oldUid, newUid) => {
 });
 
 router.patch("/me", requireAuth, async (req, res) => {
-    const { uid: newUid, name, email } = req.body;
+    const { uid: newUid, name, email, department } = req.body;
     const oldUid = req.session.uid;
 
     if (newUid !== undefined) {
@@ -108,10 +109,19 @@ router.patch("/me", requireAuth, async (req, res) => {
         if (conflict) return res.status(409).json({ error: "email already taken" });
     }
 
+    const VALID_DEPARTMENTS = new Set([
+        "人文・文化学群", "社会・国際学群", "人間学群", "生命環境学群",
+        "情報学群", "医学群", "体育専門学群", "芸術専門学群", "総合学域群",
+    ]);
+    if (department !== undefined && department !== null && !VALID_DEPARTMENTS.has(department)) {
+        return res.status(400).json({ error: "invalid department" });
+    }
+
     const fields = [];
     const values = [];
-    if (name !== undefined)  { fields.push("name = ?");  values.push(name.trim()); }
-    if (email !== undefined) { fields.push("email = ?"); values.push(email.trim()); }
+    if (name !== undefined)       { fields.push("name = ?");       values.push(name.trim()); }
+    if (email !== undefined)      { fields.push("email = ?");      values.push(email.trim()); }
+    if (department !== undefined) { fields.push("department = ?"); values.push(department ?? null); }
 
     if (fields.length > 0) {
         values.push(currentUid);
@@ -129,7 +139,7 @@ router.get("/:uid", requireAuth, (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
 
     const user = db.prepare(
-        "SELECT uid, name FROM users WHERE uid = ?"
+        "SELECT uid, name, department FROM users WHERE uid = ?"
     ).get(uid);
     if (!user) return res.status(404).json({ error: "user not found" });
 

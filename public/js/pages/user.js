@@ -18,6 +18,7 @@ export function renderUser(uid) {
         <div class="tw-profile-info" id="profileInfo">
             <p class="tw-profile-name" id="profileName"></p>
             <p class="tw-profile-uid"  id="profileUid"></p>
+            <p class="tw-profile-dept" id="profileDept" style="display:none"></p>
             <div class="tw-profile-stats" id="profileStats"></div>
         </div>
         <div id="userListWrap"></div>
@@ -51,6 +52,13 @@ export function renderUser(uid) {
             document.getElementById("headerName").textContent = user.name;
             document.getElementById("profileName").textContent = user.name;
             document.getElementById("profileUid").textContent = `@${user.uid}`;
+            const deptEl = document.getElementById("profileDept");
+            if (user.department) {
+                deptEl.textContent = user.department;
+                deptEl.style.display = "";
+            } else {
+                deptEl.style.display = "none";
+            }
 
             const statsEl = document.getElementById("profileStats");
             statsEl.innerHTML = `
