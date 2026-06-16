@@ -9,10 +9,8 @@ export function renderHome() {
     if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
 
     document.getElementById("app").innerHTML = `
-        <div class="tw-logo-wrap">
-            <img class="tw-logo" src="/logo.jpg" alt="twifeed">
-        </div>
         <div class="tw-header">
+            <img class="tw-header-logo-img" src="/logo.png" alt="twifeed">
             <div class="tw-search-wrap">
                 <input class="tw-search-input" id="searchInput" type="text" placeholder="検索…">
             </div>
