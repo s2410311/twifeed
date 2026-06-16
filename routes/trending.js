@@ -37,4 +37,19 @@ router.get("/long", requireAuth, async (req, res) => {
     res.json({ articles: top5 });
 });
 
+router.get("/tags", requireAuth, (req, res) => {
+    const since = Date.now() - 7 * 24 * 3600000;
+    const tags = db.prepare(`
+        SELECT t.tid, t.name, COUNT(a2t.aid) AS count
+        FROM tags t
+        JOIN a2t ON a2t.tid = t.tid
+        JOIN articles a ON a.aid = a2t.aid
+        WHERE a.created_at >= ?
+        GROUP BY t.tid
+        ORDER BY count DESC
+        LIMIT 10
+    `).all(since);
+    res.json({ tags });
+});
+
 export default router;

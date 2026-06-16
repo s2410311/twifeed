@@ -9,6 +9,9 @@ export function renderHome() {
     if (activeEventSource) { activeEventSource.close(); activeEventSource = null; }
 
     document.getElementById("app").innerHTML = `
+        <div class="tw-logo-wrap">
+            <img class="tw-logo" src="/logo.jpg" alt="twifeed">
+        </div>
         <div class="tw-header">
             <div class="tw-search-wrap">
                 <input class="tw-search-input" id="searchInput" type="text" placeholder="検索…">
@@ -47,6 +50,10 @@ export function renderHome() {
                             <option value="">カテゴリ</option>
                         </select>
                     </div>
+                </div>
+                <div class="tw-hot-tags" id="hotTags" style="display:none">
+                    <span class="tw-hot-tags-label">🔥 HOT なタグ</span>
+                    <div class="tw-hot-tags-chips" id="hotTagsChips"></div>
                 </div>
             </div>
         </div>
@@ -210,7 +217,37 @@ export function renderHome() {
     }
 
     // ── Compose ──
-    function openModal() { document.getElementById("overlay").style.display = "flex"; }
+    async function loadHotTags() {
+        const wrap = document.getElementById("hotTags");
+        const chips = document.getElementById("hotTagsChips");
+        if (!wrap || !chips) return;
+        try {
+            const res = await fetch("/trending/tags");
+            if (!res.ok) return;
+            const { tags } = await res.json();
+            if (!tags.length) return;
+            chips.innerHTML = "";
+            for (const t of tags) {
+                const btn = document.createElement("button");
+                btn.className = "tw-hot-tag-chip";
+                btn.textContent = `#${t.name}`;
+                btn.addEventListener("click", () => {
+                    const ta = document.getElementById("postContent");
+                    const cur = ta.value;
+                    const tag = `#${t.name}`;
+                    ta.value = cur + (cur && !cur.endsWith(" ") ? " " : "") + tag + " ";
+                    ta.focus();
+                });
+                chips.appendChild(btn);
+            }
+            wrap.style.display = "block";
+        } catch (_) { /* ignore */ }
+    }
+
+    function openModal() {
+        document.getElementById("overlay").style.display = "flex";
+        loadHotTags();
+    }
     function closeModal() {
         document.getElementById("overlay").style.display = "none";
         document.getElementById("postStatus").textContent = "";
