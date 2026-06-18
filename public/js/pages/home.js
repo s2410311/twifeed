@@ -19,7 +19,7 @@ export function renderHome() {
         <div class="tw-chips" id="chipRow"></div>
         <div id="trendBanner"></div>
         <div class="tw-page" id="timeline"></div>
-        <button class="tw-more" id="moreBtn" style="display:none">もっと見る</button>
+        <div id="scrollSentinel" style="height:1px"></div>
         <button class="tw-fab" id="fabBtn" title="投稿">✏️</button>
 
         <div class="tw-overlay" id="overlay" style="display:none">
@@ -61,6 +61,8 @@ export function renderHome() {
     let activeCid  = null;
     let activeMode = "following"; // "following" | "all"
     let categories = [];
+    let loading = false;
+    let observer = null;
 
     // ── Categories ──
     async function loadCategories() {
@@ -193,7 +195,20 @@ export function renderHome() {
     }
 
     // ── Timeline ──
+    function setupObserver() {
+        if (observer) observer.disconnect();
+        observer = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && nextOffset !== null && !loading) {
+                loadTimeline(nextOffset, true);
+            }
+        }, { rootMargin: "200px" });
+        const sentinel = document.getElementById("scrollSentinel");
+        if (sentinel) observer.observe(sentinel);
+    }
+
     async function loadTimeline(offset = 0, append = false) {
+        if (loading) return;
+        loading = true;
         const params = new URLSearchParams({ offset, limit: 20 });
         if (activeMode === "all") {
             params.set("mode", "all");
@@ -211,7 +226,7 @@ export function renderHome() {
             data.articles.forEach(a => container.appendChild(renderCard(a)));
         }
         nextOffset = data.next_offset;
-        document.getElementById("moreBtn").style.display = nextOffset !== null ? "block" : "none";
+        loading = false;
     }
 
     // ── Compose ──
@@ -334,7 +349,7 @@ export function renderHome() {
     document.getElementById("closeBtn").addEventListener("click", closeModal);
     document.getElementById("submitBtn").addEventListener("click", post);
     document.getElementById("overlay").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeModal(); });
-    document.getElementById("moreBtn").addEventListener("click", () => loadTimeline(nextOffset, true));
+    setupObserver();
 
     // ── Init ──
     async function init() {
